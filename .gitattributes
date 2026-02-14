@@ -1,0 +1,8 @@
+# Auto detect text files and perform LF normalization
+* text=auto
+
+# Lua files
+*.lua text eol=lf
+
+# Documentation
+*.md text eol=lf
