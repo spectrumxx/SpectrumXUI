@@ -1,7 +1,13 @@
 --[[
-    SpectrumX UI Library
+    SpectrumX UI Library (FIXED VERSION)
     A modern, mobile-optimized UI library for Roblox
     GitHub: https://github.com/spectrumxx/SpectrumXUI
+    
+    FIXES APLICADOS:
+    - Dropdown abre ABAIXO do botão (não em cima)
+    - Fecha ao clicar fora da UI ou do dropdown
+    - Fecha ao trocar de aba (tab)
+    - Posicionamento inteligente (acima se não couber embaixo)
 --]]
 
 local SpectrumX = {}
@@ -123,6 +129,79 @@ function SpectrumX:MakeDraggable(frame, handle)
     end)
     
     return dragging
+end
+
+-- ========== SISTEMA DE DROPDOWN GLOBAL (FIX) ==========
+function SpectrumX:SetupDropdownSystem()
+    self.ActiveDropdowns = {}
+    
+    -- Fecha todos os dropdowns
+    self.CloseAllDropdowns = function()
+        for _, dropdown in ipairs(self.ActiveDropdowns) do
+            if dropdown and dropdown.Visible then
+                local arrowLabel = dropdown:GetAttribute("ArrowLabel")
+                local dropdownStroke = dropdown:GetAttribute("DropdownStroke")
+                
+                -- Animação de fechamento
+                self:Tween(dropdown, {Size = UDim2.new(0, dropdown.Size.X.Offset, 0, 0)}, 0.3)
+                if arrowLabel then
+                    self:Tween(arrowLabel, {Rotation = 0}, 0.2)
+                end
+                if dropdownStroke then
+                    self:Tween(dropdownStroke, {Transparency = 0.6}, 0.2)
+                end
+                
+                task.delay(0.3, function()
+                    if dropdown then
+                        dropdown.Visible = false
+                    end
+                end)
+            end
+        end
+        self.ActiveDropdowns = {}
+    end
+    
+    -- Detecta clique fora
+    self.DropdownConnection = UserInputService.InputBegan:Connect(function(input, gameProcessed)
+        if input.UserInputType ~= Enum.UserInputType.MouseButton1 and 
+           input.UserInputType ~= Enum.UserInputType.Touch then
+            return
+        end
+        
+        if gameProcessed then return end
+        
+        local mousePos = UserInputService:GetMouseLocation()
+        local mainFramePos = self.MainFrame.AbsolutePosition
+        local mainFrameSize = self.MainFrame.AbsoluteSize
+        
+        -- Verifica se clicou dentro do MainFrame
+        local clickedInsideMain = (
+            mousePos.X >= mainFramePos.X and 
+            mousePos.X <= mainFramePos.X + mainFrameSize.X and
+            mousePos.Y >= mainFramePos.Y and 
+            mousePos.Y <= mainFramePos.Y + mainFrameSize.Y
+        )
+        
+        -- Verifica se clicou dentro de algum dropdown
+        local clickedInsideDropdown = false
+        for _, dropdown in ipairs(self.ActiveDropdowns) do
+            if dropdown and dropdown.Visible then
+                local dropPos = dropdown.AbsolutePosition
+                local dropSize = dropdown.AbsoluteSize
+                
+                if mousePos.X >= dropPos.X and mousePos.X <= dropPos.X + dropSize.X and
+                   mousePos.Y >= dropPos.Y and mousePos.Y <= dropPos.Y + dropSize.Y then
+                    clickedInsideDropdown = true
+                    break
+                end
+            end
+        end
+        
+        -- Fecha se clicou fora de tudo
+        if not clickedInsideMain and not clickedInsideDropdown then
+            self.CloseAllDropdowns()
+        end
+    end)
 end
 
 -- Main Window Creation
@@ -267,6 +346,9 @@ function SpectrumX:CreateWindow(config)
     
     self.Tabs = {}
     self.CurrentTab = nil
+    
+    -- Setup Dropdown System (FIX)
+    self:SetupDropdownSystem()
     
     -- Make draggable
     self:MakeDraggable(self.MainFrame, self.Header)
@@ -431,8 +513,9 @@ function SpectrumX:CreateTab(config)
     }
     self.Tabs[tabId] = tabData
     
-    -- Tab click handler
+    -- Tab click handler (FIX: Fecha dropdowns ao trocar de aba)
     tabBtn.MouseButton1Click:Connect(function()
+        self:CloseAllDropdowns()
         self:SelectTab(tabId)
     end)
     
@@ -553,7 +636,7 @@ end
 function SpectrumX:CreateButton(parent, config)
     config = config or {}
     local text = config.Text or "Button"
-    local style = config.Style or "default" -- default, accent, warning, info
+    local style = config.Style or "default"
     local callback = config.Callback or function() end
     
     local frame = Instance.new("Frame")
@@ -846,7 +929,7 @@ function SpectrumX:CreateSlider(parent, config)
     }
 end
 
--- Create Dropdown (Single Select)
+-- ========== CREATE DROPDOWN (FIXED) ==========
 function SpectrumX:CreateDropdown(parent, config)
     config = config or {}
     local labelText = config.Label or "Dropdown"
@@ -899,7 +982,7 @@ function SpectrumX:CreateDropdown(parent, config)
     
     -- Dropdown List (ScreenGui level for proper layering)
     local dropdownList = Instance.new("ScrollingFrame")
-    dropdownList.Name = "DropdownList_" .. labelText
+    dropdownList.Name = "DropdownList_" .. labelText .. "_" .. HttpService:GenerateGUID(false)
     dropdownList.BackgroundColor3 = self.Theme.Card
     dropdownList.Size = UDim2.new(0, 200, 0, 0)
     dropdownList.ScrollBarThickness = 2
@@ -909,6 +992,11 @@ function SpectrumX:CreateDropdown(parent, config)
     dropdownList.BorderSizePixel = 0
     dropdownList.Parent = self.ScreenGui
     self:CreateCorner(dropdownList, UDim.new(0, 6))
+    
+    -- Store references for closing system
+    dropdownList:SetAttribute("ArrowLabel", arrowLabel)
+    dropdownList:SetAttribute("DropdownStroke", dropdownStroke)
+    dropdownList:SetAttribute("IsOpen", false)
     
     local listStroke = self:CreateStroke(dropdownList, self.Theme.Accent, 1.5, 0)
     
@@ -979,6 +1067,16 @@ function SpectrumX:CreateDropdown(parent, config)
                 
                 -- Close dropdown
                 isOpen = false
+                dropdownList:SetAttribute("IsOpen", false)
+                
+                -- Remove from active list
+                for i, dd in ipairs(self.ActiveDropdowns) do
+                    if dd == dropdownList then
+                        table.remove(self.ActiveDropdowns, i)
+                        break
+                    end
+                end
+                
                 self:Tween(dropdownList, {Size = UDim2.new(0, dropdownBtn.AbsoluteSize.X, 0, 0)}, 0.3)
                 self:Tween(arrowLabel, {Rotation = 0}, 0.2)
                 task.wait(0.3)
@@ -1005,32 +1103,66 @@ function SpectrumX:CreateDropdown(parent, config)
         updateDropdownHeight()
     end
     
+    -- ========== FIXED POSITIONING FUNCTION ==========
+    local function positionDropdown()
+        local absPos = dropdownBtn.AbsolutePosition
+        local absSize = dropdownBtn.AbsoluteSize
+        local screenHeight = workspace.CurrentCamera.ViewportSize.Y
+        local dropdownHeight = math.min(listLayout.AbsoluteContentSize.Y + 12, 180)
+        
+        -- Calculate available space
+        local spaceBelow = screenHeight - (absPos.Y + absSize.Y)
+        local spaceAbove = absPos.Y
+        
+        -- Decide position: prefer below, but go above if not enough space
+        local openAbove = false
+        if spaceBelow < dropdownHeight and spaceAbove > dropdownHeight then
+            openAbove = true
+        end
+        
+        if openAbove then
+            -- Open ABOVE the button
+            dropdownList.Position = UDim2.fromOffset(absPos.X, absPos.Y - dropdownHeight - 4)
+        else
+            -- Open BELOW the button (default)
+            dropdownList.Position = UDim2.fromOffset(absPos.X, absPos.Y + absSize.Y + 4)
+        end
+    end
+    
     dropdownBtn.MouseButton1Click:Connect(function()
         if isOpen then
+            -- Close
             isOpen = false
+            dropdownList:SetAttribute("IsOpen", false)
+            
+            -- Remove from active list
+            for i, dd in ipairs(self.ActiveDropdowns) do
+                if dd == dropdownList then
+                    table.remove(self.ActiveDropdowns, i)
+                    break
+                end
+            end
+            
             self:Tween(dropdownList, {Size = UDim2.new(0, dropdownBtn.AbsoluteSize.X, 0, 0)}, 0.3)
             self:Tween(dropdownStroke, {Transparency = 0.6}, 0.2)
             self:Tween(arrowLabel, {Rotation = 0}, 0.2)
             task.wait(0.3)
             dropdownList.Visible = false
         else
-            -- Close other dropdowns
-            for _, child in ipairs(self.ScreenGui:GetChildren()) do
-                if child.Name:find("DropdownList_") and child ~= dropdownList then
-                    child.Visible = false
-                end
-            end
+            -- Close other dropdowns first
+            self:CloseAllDropdowns()
             
-            -- Position dropdown
-            local absPos = dropdownBtn.AbsolutePosition
-            local absSize = dropdownBtn.AbsoluteSize
-            dropdownList.Position = UDim2.fromOffset(absPos.X, absPos.Y + absSize.Y + 4)
-            
+            -- Position and open
             dropdownList.Visible = true
             populateList()
+            positionDropdown() -- FIXED: Smart positioning
+            
             self:Tween(dropdownStroke, {Transparency = 0.2}, 0.2)
             self:Tween(arrowLabel, {Rotation = 180}, 0.2)
+            
             isOpen = true
+            dropdownList:SetAttribute("IsOpen", true)
+            table.insert(self.ActiveDropdowns, dropdownList)
         end
     end)
     
@@ -1062,7 +1194,7 @@ function SpectrumX:CreateDropdown(parent, config)
     }
 end
 
--- Create Multi Dropdown
+-- ========== CREATE MULTI DROPDOWN (FIXED) ==========
 function SpectrumX:CreateMultiDropdown(parent, config)
     config = config or {}
     local labelText = config.Label or "Multi Select"
@@ -1115,7 +1247,7 @@ function SpectrumX:CreateMultiDropdown(parent, config)
     
     -- Dropdown List
     local dropdownList = Instance.new("ScrollingFrame")
-    dropdownList.Name = "MultiDropdownList_" .. labelText
+    dropdownList.Name = "MultiDropdownList_" .. labelText .. "_" .. HttpService:GenerateGUID(false)
     dropdownList.BackgroundColor3 = self.Theme.Card
     dropdownList.Size = UDim2.new(0, 200, 0, 0)
     dropdownList.ScrollBarThickness = 2
@@ -1125,6 +1257,11 @@ function SpectrumX:CreateMultiDropdown(parent, config)
     dropdownList.BorderSizePixel = 0
     dropdownList.Parent = self.ScreenGui
     self:CreateCorner(dropdownList, UDim.new(0, 6))
+    
+    -- Store references for closing system
+    dropdownList:SetAttribute("ArrowLabel", arrowLabel)
+    dropdownList:SetAttribute("DropdownStroke", dropdownStroke)
+    dropdownList:SetAttribute("IsOpen", false)
     
     local listStroke = self:CreateStroke(dropdownList, self.Theme.Accent, 1.5, 0)
     
@@ -1249,31 +1386,66 @@ function SpectrumX:CreateMultiDropdown(parent, config)
         updateDropdownHeight()
     end
     
+    -- ========== FIXED POSITIONING FUNCTION ==========
+    local function positionDropdown()
+        local absPos = dropdownBtn.AbsolutePosition
+        local absSize = dropdownBtn.AbsoluteSize
+        local screenHeight = workspace.CurrentCamera.ViewportSize.Y
+        local dropdownHeight = math.min(listLayout.AbsoluteContentSize.Y + 12, 180)
+        
+        -- Calculate available space
+        local spaceBelow = screenHeight - (absPos.Y + absSize.Y)
+        local spaceAbove = absPos.Y
+        
+        -- Decide position: prefer below, but go above if not enough space
+        local openAbove = false
+        if spaceBelow < dropdownHeight and spaceAbove > dropdownHeight then
+            openAbove = true
+        end
+        
+        if openAbove then
+            -- Open ABOVE the button
+            dropdownList.Position = UDim2.fromOffset(absPos.X, absPos.Y - dropdownHeight - 4)
+        else
+            -- Open BELOW the button (default)
+            dropdownList.Position = UDim2.fromOffset(absPos.X, absPos.Y + absSize.Y + 4)
+        end
+    end
+    
     dropdownBtn.MouseButton1Click:Connect(function()
         if isOpen then
+            -- Close
             isOpen = false
+            dropdownList:SetAttribute("IsOpen", false)
+            
+            -- Remove from active list
+            for i, dd in ipairs(self.ActiveDropdowns) do
+                if dd == dropdownList then
+                    table.remove(self.ActiveDropdowns, i)
+                    break
+                end
+            end
+            
             self:Tween(dropdownList, {Size = UDim2.new(0, dropdownBtn.AbsoluteSize.X, 0, 0)}, 0.3)
             self:Tween(dropdownStroke, {Transparency = 0.6}, 0.2)
             self:Tween(arrowLabel, {Rotation = 0}, 0.2)
             task.wait(0.3)
             dropdownList.Visible = false
         else
-            -- Close other dropdowns
-            for _, child in ipairs(self.ScreenGui:GetChildren()) do
-                if (child.Name:find("DropdownList_") or child.Name:find("MultiDropdownList_")) and child ~= dropdownList then
-                    child.Visible = false
-                end
-            end
+            -- Close other dropdowns first
+            self:CloseAllDropdowns()
             
-            local absPos = dropdownBtn.AbsolutePosition
-            local absSize = dropdownBtn.AbsoluteSize
-            dropdownList.Position = UDim2.fromOffset(absPos.X, absPos.Y + absSize.Y + 4)
-            
+            -- Position and open
             dropdownList.Visible = true
             populateList()
+            positionDropdown() -- FIXED: Smart positioning
+            
             self:Tween(dropdownStroke, {Transparency = 0.2}, 0.2)
             self:Tween(arrowLabel, {Rotation = 180}, 0.2)
+            
             isOpen = true
+            dropdownList:SetAttribute("IsOpen", true)
+            table.insert(self.ActiveDropdowns, dropdownList)
         end
     end)
     
@@ -1546,7 +1718,7 @@ end
 function SpectrumX:Notify(config)
     config = config or {}
     local text = config.Text or "Notification"
-    local type = config.Type or "info" -- info, success, warning, error
+    local type = config.Type or "info"
     local duration = config.Duration or 3
     
     local notification = Instance.new("Frame")
@@ -1601,6 +1773,9 @@ end
 
 -- Destroy UI
 function SpectrumX:Destroy()
+    if self.DropdownConnection then
+        self.DropdownConnection:Disconnect()
+    end
     if self.ScreenGui then
         self.ScreenGui:Destroy()
     end
