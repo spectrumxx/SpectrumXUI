@@ -273,6 +273,41 @@ function SpectrumX:CreateWindow(config)
     
     -- Create Floating Toggle Button
     self:CreateFloatingButton()
+
+    -- CORREÇÃO: Fechar dropdowns ao clicar fora
+    UserInputService.InputBegan:Connect(function(input, gameProcessed)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or
+           input.UserInputType == Enum.UserInputType.Touch then
+
+            local gui = UserInputService:GetGuiObjectsAtPosition(input.Position.X, input.Position.Y)
+            local hitDropdown = false
+
+            for _, obj in ipairs(gui) do
+                if obj.Name:find("DropdownList_") or obj.Name:find("MultiDropdownList_") then
+                    hitDropdown = true
+                    break
+                end
+                local parent = obj.Parent
+                while parent and parent ~= self.ScreenGui do
+                    if parent.Name:find("DropdownList_") or parent.Name:find("MultiDropdownList_") then
+                        hitDropdown = true
+                        break
+                    end
+                    parent = parent.Parent
+                end
+                if hitDropdown then break end
+            end
+
+            if not hitDropdown then
+                for _, child in ipairs(self.ScreenGui:GetChildren()) do
+                    if child.Name:find("DropdownList_") or child.Name:find("MultiDropdownList_") then
+                        child.Visible = false
+                        child.Size = UDim2.new(0, child.AbsoluteSize.X, 0, 0)
+                    end
+                end
+            end
+        end
+    end)
     
     return window
 end
@@ -926,6 +961,17 @@ function SpectrumX:CreateDropdown(parent, config)
     
     local selectedValue = default
     local isOpen = false
+
+    -- CORREÇÃO: função de fechar usada internamente e pelo listener global
+    local function closeDropdown()
+        if not isOpen then return end
+        isOpen = false
+        self:Tween(dropdownList, {Size = UDim2.new(0, dropdownBtn.AbsoluteSize.X, 0, 0)}, 0.3)
+        self:Tween(dropdownStroke, {Transparency = 0.6}, 0.2)
+        self:Tween(arrowLabel, {Rotation = 0}, 0.2)
+        task.wait(0.3)
+        dropdownList.Visible = false
+    end
     
     local function updateDropdownHeight()
         local contentHeight = listLayout.AbsoluteContentSize.Y + 12
@@ -976,13 +1022,7 @@ function SpectrumX:CreateDropdown(parent, config)
                 selectedValue = option
                 dropdownBtn.Text = "  " .. option
                 callback(option)
-                
-                -- Close dropdown
-                isOpen = false
-                self:Tween(dropdownList, {Size = UDim2.new(0, dropdownBtn.AbsoluteSize.X, 0, 0)}, 0.3)
-                self:Tween(arrowLabel, {Rotation = 0}, 0.2)
-                task.wait(0.3)
-                dropdownList.Visible = false
+                closeDropdown()
             end)
             
             optionBtn.MouseEnter:Connect(function()
@@ -1007,21 +1047,17 @@ function SpectrumX:CreateDropdown(parent, config)
     
     dropdownBtn.MouseButton1Click:Connect(function()
         if isOpen then
-            isOpen = false
-            self:Tween(dropdownList, {Size = UDim2.new(0, dropdownBtn.AbsoluteSize.X, 0, 0)}, 0.3)
-            self:Tween(dropdownStroke, {Transparency = 0.6}, 0.2)
-            self:Tween(arrowLabel, {Rotation = 0}, 0.2)
-            task.wait(0.3)
-            dropdownList.Visible = false
+            closeDropdown()
         else
-            -- Close other dropdowns
+            -- Fecha outros dropdowns abertos
             for _, child in ipairs(self.ScreenGui:GetChildren()) do
                 if child.Name:find("DropdownList_") and child ~= dropdownList then
                     child.Visible = false
                 end
             end
             
-            -- Position dropdown
+            -- CORREÇÃO: aguarda 1 frame para garantir AbsolutePosition correto
+            RunService.RenderStepped:Wait()
             local absPos = dropdownBtn.AbsolutePosition
             local absSize = dropdownBtn.AbsoluteSize
             dropdownList.Position = UDim2.fromOffset(absPos.X, absPos.Y + absSize.Y + 4)
@@ -1145,6 +1181,17 @@ function SpectrumX:CreateMultiDropdown(parent, config)
         table.insert(selectedValues, v)
     end
     local isOpen = false
+
+    -- CORREÇÃO: função de fechar centralizada
+    local function closeDropdown()
+        if not isOpen then return end
+        isOpen = false
+        self:Tween(dropdownList, {Size = UDim2.new(0, dropdownBtn.AbsoluteSize.X, 0, 0)}, 0.3)
+        self:Tween(dropdownStroke, {Transparency = 0.6}, 0.2)
+        self:Tween(arrowLabel, {Rotation = 0}, 0.2)
+        task.wait(0.3)
+        dropdownList.Visible = false
+    end
     
     local function updateButtonText()
         if #selectedValues == 0 then
@@ -1251,20 +1298,17 @@ function SpectrumX:CreateMultiDropdown(parent, config)
     
     dropdownBtn.MouseButton1Click:Connect(function()
         if isOpen then
-            isOpen = false
-            self:Tween(dropdownList, {Size = UDim2.new(0, dropdownBtn.AbsoluteSize.X, 0, 0)}, 0.3)
-            self:Tween(dropdownStroke, {Transparency = 0.6}, 0.2)
-            self:Tween(arrowLabel, {Rotation = 0}, 0.2)
-            task.wait(0.3)
-            dropdownList.Visible = false
+            closeDropdown()
         else
-            -- Close other dropdowns
+            -- Fecha outros dropdowns abertos
             for _, child in ipairs(self.ScreenGui:GetChildren()) do
                 if (child.Name:find("DropdownList_") or child.Name:find("MultiDropdownList_")) and child ~= dropdownList then
                     child.Visible = false
                 end
             end
             
+            -- CORREÇÃO: aguarda 1 frame para garantir AbsolutePosition correto
+            RunService.RenderStepped:Wait()
             local absPos = dropdownBtn.AbsolutePosition
             local absSize = dropdownBtn.AbsoluteSize
             dropdownList.Position = UDim2.fromOffset(absPos.X, absPos.Y + absSize.Y + 4)
