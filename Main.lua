@@ -125,17 +125,201 @@ function SpectrumX:MakeDraggable(frame, handle)
     return dragging
 end
 
+-- Sistema para fechar dropdowns ao clicar fora
+function SpectrumX:SetupDropdownAutoClose()
+    if self._dropdownConnection then return end
+    
+    self._dropdownConnection = UserInputService.InputBegan:Connect(function(input)
+        if input.UserInputType ~= Enum.UserInputType.MouseButton1 and 
+           input.UserInputType ~= Enum.UserInputType.Touch then
+            return
+        end
+        
+        local mousePos = UserInputService:GetMouseLocation()
+        
+        for _, child in ipairs(self.ScreenGui:GetChildren()) do
+            if (child.Name:find("DropdownList_") or child.Name:find("MultiDropdownList_")) and child.Visible then
+                local absPos = child.AbsolutePosition
+                local absSize = child.AbsoluteSize
+                
+                if mousePos.X < absPos.X or mousePos.X > absPos.X + absSize.X or
+                   mousePos.Y < absPos.Y or mousePos.Y > absPos.Y + absSize.Y then
+                    
+                    local btnName = child.Name:gsub("DropdownList_", ""):gsub("MultiDropdownList_", "")
+                    local clickedBtn = false
+                    
+                    for _, tabData in pairs(self.Tabs) do
+                        for _, grandchild in ipairs(tabData.Left:GetDescendants()) do
+                            if grandchild:IsA("TextButton") and grandchild.Text:find(btnName) then
+                                local btnPos = grandchild.AbsolutePosition
+                                local btnSize = grandchild.AbsoluteSize
+                                if mousePos.X >= btnPos.X and mousePos.X <= btnPos.X + btnSize.X and
+                                   mousePos.Y >= btnPos.Y and mousePos.Y <= btnPos.Y + btnSize.Y then
+                                    clickedBtn = true
+                                    break
+                                end
+                            end
+                        end
+                        if not clickedBtn then
+                            for _, grandchild in ipairs(tabData.Right:GetDescendants()) do
+                                if grandchild:IsA("TextButton") and grandchild.Text:find(btnName) then
+                                    local btnPos = grandchild.AbsolutePosition
+                                    local btnSize = grandchild.AbsoluteSize
+                                    if mousePos.X >= btnPos.X and mousePos.X <= btnPos.X + btnSize.X and
+                                       mousePos.Y >= btnPos.Y and mousePos.Y <= btnPos.Y + btnSize.Y then
+                                        clickedBtn = true
+                                        break
+                                    end
+                                end
+                            end
+                        end
+                    end
+                    
+                    if not clickedBtn then
+                        self:Tween(child, {Size = UDim2.new(0, child.AbsoluteSize.X, 0, 0)}, 0.3)
+                        child.Visible = false
+                        
+                        for _, tabData in pairs(self.Tabs) do
+                            for _, grandchild in ipairs(tabData.Left:GetDescendants()) do
+                                if grandchild:IsA("TextLabel") and grandchild.Text == "▼" then
+                                    self:Tween(grandchild, {Rotation = 0}, 0.2)
+                                end
+                            end
+                            for _, grandchild in ipairs(tabData.Right:GetDescendants()) do
+                                if grandchild:IsA("TextLabel") and grandchild.Text == "▼" then
+                                    self:Tween(grandchild, {Rotation = 0}, 0.2)
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end)
+end
+
+-- NOVA FUNÇÃO: Criar Imagem
+function SpectrumX:CreateImage(parent, config)
+    config = config or {}
+    local imageId = config.ImageId or ""
+    local size = config.Size or UDim2.new(0, 100, 0, 100)
+    local position = config.Position or UDim2.new(0, 0, 0, 0)
+    local cornerRadius = config.CornerRadius or UDim.new(0, 8)
+    local callback = config.Callback or function() end
+    
+    local frame = Instance.new("Frame")
+    frame.BackgroundColor3 = self.Theme.Card
+    frame.Size = size
+    frame.Position = position
+    frame.Parent = parent
+    self:CreateCorner(frame, cornerRadius)
+    
+    local imageLabel = Instance.new("ImageLabel")
+    imageLabel.Name = "ImageContent"
+    imageLabel.BackgroundTransparency = 1
+    imageLabel.Position = UDim2.new(0, 2, 0, 2)
+    imageLabel.Size = UDim2.new(1, -4, 1, -4)
+    imageLabel.Image = imageId
+    imageLabel.ScaleType = config.ScaleType or Enum.ScaleType.Stretch
+    imageLabel.Parent = frame
+    self:CreateCorner(imageLabel, UDim.new(0, cornerRadius.Offset - 2))
+    
+    local clickBtn = Instance.new("TextButton")
+    clickBtn.BackgroundTransparency = 1
+    clickBtn.Size = UDim2.new(1, 0, 1, 0)
+    clickBtn.Text = ""
+    clickBtn.Parent = frame
+    
+    clickBtn.MouseButton1Click:Connect(function()
+        callback()
+    end)
+    
+    if config.HighlightOnHover then
+        local hoverFrame = Instance.new("Frame")
+        hoverFrame.BackgroundColor3 = self.Theme.Accent
+        hoverFrame.BackgroundTransparency = 1
+        hoverFrame.Size = UDim2.new(1, 0, 1, 0)
+        hoverFrame.ZIndex = 2
+        hoverFrame.Parent = frame
+        self:CreateCorner(hoverFrame, cornerRadius)
+        
+        clickBtn.MouseEnter:Connect(function()
+            self:Tween(hoverFrame, {BackgroundTransparency = 0.8}, 0.2)
+        end)
+        
+        clickBtn.MouseLeave:Connect(function()
+            self:Tween(hoverFrame, {BackgroundTransparency = 1}, 0.2)
+        end)
+    end
+    
+    return {
+        Frame = frame,
+        ImageLabel = imageLabel,
+        SetImage = function(newId)
+            imageLabel.Image = newId
+        end,
+        GetImage = function()
+            return imageLabel.Image
+        end
+    }
+end
+
+-- NOVA FUNÇÃO: Criar ImageButton
+function SpectrumX:CreateImageButton(parent, config)
+    config = config or {}
+    local imageId = config.ImageId or ""
+    local size = config.Size or UDim2.new(0, 50, 0, 50)
+    local callback = config.Callback or function() end
+    
+    local frame = Instance.new("Frame")
+    frame.BackgroundColor3 = self.Theme.Card
+    frame.Size = UDim2.new(1, 0, 0, size.Y.Offset + 10)
+    frame.Parent = parent
+    self:CreateCorner(frame)
+    
+    local btn = Instance.new("ImageButton")
+    btn.BackgroundColor3 = self.Theme.Input
+    btn.Position = UDim2.new(0.5, -size.X.Offset/2, 0.5, -size.Y.Offset/2)
+    btn.Size = size
+    btn.Image = imageId
+    btn.ScaleType = config.ScaleType or Enum.ScaleType.Fit
+    btn.Parent = frame
+    self:CreateCorner(btn, UDim.new(0, 8))
+    
+    local btnStroke = self:CreateStroke(btn, self.Theme.Accent, 1.5, 0.7)
+    
+    btn.MouseEnter:Connect(function()
+        self:Tween(btn, {BackgroundColor3 = Color3.fromRGB(45, 45, 45)}, 0.2)
+        self:Tween(btnStroke, {Transparency = 0.3}, 0.2)
+    end)
+    
+    btn.MouseLeave:Connect(function()
+        self:Tween(btn, {BackgroundColor3 = self.Theme.Input}, 0.2)
+        self:Tween(btnStroke, {Transparency = 0.7}, 0.2)
+    end)
+    
+    btn.MouseButton1Click:Connect(function()
+        callback()
+    end)
+    
+    return {
+        Frame = frame,
+        Button = btn,
+        SetImage = function(newId)
+            btn.Image = newId
+        end
+    }
+end
+
 -- Main Window Creation
 function SpectrumX:CreateWindow(config)
     config = config or {}
     local window = setmetatable({}, self)
     
-    -- Destroy existing UI
     if PlayerGui:FindFirstChild("SpectrumX") then
         PlayerGui.SpectrumX:Destroy()
     end
     
-    -- ScreenGui
     self.ScreenGui = Instance.new("ScreenGui")
     self.ScreenGui.Name = "SpectrumX"
     self.ScreenGui.Parent = PlayerGui
@@ -144,7 +328,6 @@ function SpectrumX:CreateWindow(config)
     self.ScreenGui.IgnoreGuiInset = true
     self.ScreenGui.DisplayOrder = 999
     
-    -- Main Frame
     self.MainFrame = Instance.new("Frame")
     self.MainFrame.Name = "MainFrame"
     self.MainFrame.BackgroundColor3 = self.Theme.Background
@@ -159,7 +342,6 @@ function SpectrumX:CreateWindow(config)
     self:CreateShadow(self.MainFrame)
     self:CreateStroke(self.MainFrame, self.Theme.Accent, 2, 0)
     
-    -- Header
     self.Header = Instance.new("Frame")
     self.Header.Name = "Header"
     self.Header.BackgroundColor3 = self.Theme.Header
@@ -176,7 +358,6 @@ function SpectrumX:CreateWindow(config)
     headerCover.Position = UDim2.new(0, 0, 1, -12)
     headerCover.Parent = self.Header
     
-    -- Title Icon (Letter)
     local titleIcon = Instance.new("TextLabel")
     titleIcon.Name = "TitleIcon"
     titleIcon.BackgroundTransparency = 1
@@ -188,7 +369,6 @@ function SpectrumX:CreateWindow(config)
     titleIcon.TextSize = 28
     titleIcon.Parent = self.Header
     
-    -- Title
     local title = Instance.new("TextLabel")
     title.Name = "Title"
     title.BackgroundTransparency = 1
@@ -208,7 +388,6 @@ function SpectrumX:CreateWindow(config)
     }
     titleGradient.Parent = title
     
-    -- Close Button
     local closeBtn = Instance.new("TextButton")
     closeBtn.Name = "CloseBtn"
     closeBtn.BackgroundTransparency = 1
@@ -230,7 +409,6 @@ function SpectrumX:CreateWindow(config)
         self.MainFrame.Visible = false 
     end)
     
-    -- Sidebar
     self.Sidebar = Instance.new("Frame")
     self.Sidebar.Name = "Sidebar"
     self.Sidebar.BackgroundColor3 = self.Theme.Sidebar
@@ -257,7 +435,6 @@ function SpectrumX:CreateWindow(config)
     sidebarPadding.PaddingTop = UDim.new(0, 12)
     sidebarPadding.Parent = self.Sidebar
     
-    -- Content Area
     self.ContentArea = Instance.new("Frame")
     self.ContentArea.Name = "ContentArea"
     self.ContentArea.BackgroundTransparency = 1
@@ -268,46 +445,9 @@ function SpectrumX:CreateWindow(config)
     self.Tabs = {}
     self.CurrentTab = nil
     
-    -- Make draggable
     self:MakeDraggable(self.MainFrame, self.Header)
-    
-    -- Create Floating Toggle Button
     self:CreateFloatingButton()
-
-    -- CORREÇÃO: Fechar dropdowns ao clicar fora
-    UserInputService.InputBegan:Connect(function(input, gameProcessed)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or
-           input.UserInputType == Enum.UserInputType.Touch then
-
-            local gui = UserInputService:GetGuiObjectsAtPosition(input.Position.X, input.Position.Y)
-            local hitDropdown = false
-
-            for _, obj in ipairs(gui) do
-                if obj.Name:find("DropdownList_") or obj.Name:find("MultiDropdownList_") then
-                    hitDropdown = true
-                    break
-                end
-                local parent = obj.Parent
-                while parent and parent ~= self.ScreenGui do
-                    if parent.Name:find("DropdownList_") or parent.Name:find("MultiDropdownList_") then
-                        hitDropdown = true
-                        break
-                    end
-                    parent = parent.Parent
-                end
-                if hitDropdown then break end
-            end
-
-            if not hitDropdown then
-                for _, child in ipairs(self.ScreenGui:GetChildren()) do
-                    if child.Name:find("DropdownList_") or child.Name:find("MultiDropdownList_") then
-                        child.Visible = false
-                        child.Size = UDim2.new(0, child.AbsoluteSize.X, 0, 0)
-                    end
-                end
-            end
-        end
-    end)
+    self:SetupDropdownAutoClose()
     
     return window
 end
@@ -337,7 +477,6 @@ function SpectrumX:CreateFloatingButton()
     floatStroke.Thickness = 3
     floatStroke.Parent = self.FloatBtn
     
-    -- Make draggable
     local fDragging, fDragInput, fDragStart, fStartPos
     
     local function updateFloat(input)
@@ -390,7 +529,6 @@ function SpectrumX:CreateTab(config)
     local tabId = config.Name or "Tab"
     local tabIcon = config.Icon or string.sub(tabId, 1, 1)
     
-    -- Tab Button
     local tabBtn = Instance.new("TextButton")
     tabBtn.Name = tabId .. "Tab"
     tabBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
@@ -402,7 +540,6 @@ function SpectrumX:CreateTab(config)
     tabBtn.Parent = self.Sidebar
     self:CreateCorner(tabBtn, UDim.new(0, 10))
     
-    -- Page Container
     local pageContainer = Instance.new("Frame")
     pageContainer.Name = tabId .. "PageContainer"
     pageContainer.BackgroundTransparency = 1
@@ -410,7 +547,6 @@ function SpectrumX:CreateTab(config)
     pageContainer.Visible = false
     pageContainer.Parent = self.ContentArea
     
-    -- Divider
     local divider = Instance.new("Frame")
     divider.BackgroundColor3 = self.Theme.Border
     divider.BorderSizePixel = 0
@@ -418,7 +554,6 @@ function SpectrumX:CreateTab(config)
     divider.Size = UDim2.new(0, 2, 1, 0)
     divider.Parent = pageContainer
     
-    -- Left Side
     local leftSide = Instance.new("ScrollingFrame")
     leftSide.Name = "LeftSide"
     leftSide.BackgroundTransparency = 1
@@ -437,7 +572,6 @@ function SpectrumX:CreateTab(config)
         leftSide.CanvasSize = UDim2.new(0, 0, 0, leftLayout.AbsoluteContentSize.Y + 10)
     end)
     
-    -- Right Side
     local rightSide = Instance.new("ScrollingFrame")
     rightSide.Name = "RightSide"
     rightSide.BackgroundTransparency = 1
@@ -457,7 +591,6 @@ function SpectrumX:CreateTab(config)
         rightSide.CanvasSize = UDim2.new(0, 0, 0, rightLayout.AbsoluteContentSize.Y + 10)
     end)
     
-    -- Store tab data
     local tabData = {
         Button = tabBtn,
         Container = pageContainer,
@@ -466,12 +599,10 @@ function SpectrumX:CreateTab(config)
     }
     self.Tabs[tabId] = tabData
     
-    -- Tab click handler
     tabBtn.MouseButton1Click:Connect(function()
         self:SelectTab(tabId)
     end)
     
-    -- Select first tab automatically
     if not self.CurrentTab then
         self:SelectTab(tabId)
     end
@@ -588,7 +719,7 @@ end
 function SpectrumX:CreateButton(parent, config)
     config = config or {}
     local text = config.Text or "Button"
-    local style = config.Style or "default" -- default, accent, warning, info
+    local style = config.Style or "default"
     local callback = config.Callback or function() end
     
     local frame = Instance.new("Frame")
@@ -932,7 +1063,6 @@ function SpectrumX:CreateDropdown(parent, config)
     arrowLabel.TextSize = 10
     arrowLabel.Parent = dropdownBtn
     
-    -- Dropdown List (ScreenGui level for proper layering)
     local dropdownList = Instance.new("ScrollingFrame")
     dropdownList.Name = "DropdownList_" .. labelText
     dropdownList.BackgroundColor3 = self.Theme.Card
@@ -961,17 +1091,6 @@ function SpectrumX:CreateDropdown(parent, config)
     
     local selectedValue = default
     local isOpen = false
-
-    -- CORREÇÃO: função de fechar usada internamente e pelo listener global
-    local function closeDropdown()
-        if not isOpen then return end
-        isOpen = false
-        self:Tween(dropdownList, {Size = UDim2.new(0, dropdownBtn.AbsoluteSize.X, 0, 0)}, 0.3)
-        self:Tween(dropdownStroke, {Transparency = 0.6}, 0.2)
-        self:Tween(arrowLabel, {Rotation = 0}, 0.2)
-        task.wait(0.3)
-        dropdownList.Visible = false
-    end
     
     local function updateDropdownHeight()
         local contentHeight = listLayout.AbsoluteContentSize.Y + 12
@@ -1022,7 +1141,12 @@ function SpectrumX:CreateDropdown(parent, config)
                 selectedValue = option
                 dropdownBtn.Text = "  " .. option
                 callback(option)
-                closeDropdown()
+                
+                isOpen = false
+                self:Tween(dropdownList, {Size = UDim2.new(0, dropdownBtn.AbsoluteSize.X, 0, 0)}, 0.3)
+                self:Tween(arrowLabel, {Rotation = 0}, 0.2)
+                task.wait(0.3)
+                dropdownList.Visible = false
             end)
             
             optionBtn.MouseEnter:Connect(function()
@@ -1047,20 +1171,22 @@ function SpectrumX:CreateDropdown(parent, config)
     
     dropdownBtn.MouseButton1Click:Connect(function()
         if isOpen then
-            closeDropdown()
+            isOpen = false
+            self:Tween(dropdownList, {Size = UDim2.new(0, dropdownBtn.AbsoluteSize.X, 0, 0)}, 0.3)
+            self:Tween(dropdownStroke, {Transparency = 0.6}, 0.2)
+            self:Tween(arrowLabel, {Rotation = 0}, 0.2)
+            task.wait(0.3)
+            dropdownList.Visible = false
         else
-            -- Fecha outros dropdowns abertos
             for _, child in ipairs(self.ScreenGui:GetChildren()) do
                 if child.Name:find("DropdownList_") and child ~= dropdownList then
                     child.Visible = false
                 end
             end
             
-            -- CORREÇÃO: aguarda 1 frame para garantir AbsolutePosition correto
-            RunService.RenderStepped:Wait()
             local absPos = dropdownBtn.AbsolutePosition
             local absSize = dropdownBtn.AbsoluteSize
-            dropdownList.Position = UDim2.fromOffset(absPos.X, absPos.Y + absSize.Y + 4)
+            dropdownList.Position = UDim2.fromOffset(absPos.X, absPos.Y + absSize.Y + 8)
             
             dropdownList.Visible = true
             populateList()
@@ -1149,7 +1275,6 @@ function SpectrumX:CreateMultiDropdown(parent, config)
     arrowLabel.TextSize = 10
     arrowLabel.Parent = dropdownBtn
     
-    -- Dropdown List
     local dropdownList = Instance.new("ScrollingFrame")
     dropdownList.Name = "MultiDropdownList_" .. labelText
     dropdownList.BackgroundColor3 = self.Theme.Card
@@ -1181,17 +1306,6 @@ function SpectrumX:CreateMultiDropdown(parent, config)
         table.insert(selectedValues, v)
     end
     local isOpen = false
-
-    -- CORREÇÃO: função de fechar centralizada
-    local function closeDropdown()
-        if not isOpen then return end
-        isOpen = false
-        self:Tween(dropdownList, {Size = UDim2.new(0, dropdownBtn.AbsoluteSize.X, 0, 0)}, 0.3)
-        self:Tween(dropdownStroke, {Transparency = 0.6}, 0.2)
-        self:Tween(arrowLabel, {Rotation = 0}, 0.2)
-        task.wait(0.3)
-        dropdownList.Visible = false
-    end
     
     local function updateButtonText()
         if #selectedValues == 0 then
@@ -1298,20 +1412,22 @@ function SpectrumX:CreateMultiDropdown(parent, config)
     
     dropdownBtn.MouseButton1Click:Connect(function()
         if isOpen then
-            closeDropdown()
+            isOpen = false
+            self:Tween(dropdownList, {Size = UDim2.new(0, dropdownBtn.AbsoluteSize.X, 0, 0)}, 0.3)
+            self:Tween(dropdownStroke, {Transparency = 0.6}, 0.2)
+            self:Tween(arrowLabel, {Rotation = 0}, 0.2)
+            task.wait(0.3)
+            dropdownList.Visible = false
         else
-            -- Fecha outros dropdowns abertos
             for _, child in ipairs(self.ScreenGui:GetChildren()) do
                 if (child.Name:find("DropdownList_") or child.Name:find("MultiDropdownList_")) and child ~= dropdownList then
                     child.Visible = false
                 end
             end
             
-            -- CORREÇÃO: aguarda 1 frame para garantir AbsolutePosition correto
-            RunService.RenderStepped:Wait()
             local absPos = dropdownBtn.AbsolutePosition
             local absSize = dropdownBtn.AbsoluteSize
-            dropdownList.Position = UDim2.fromOffset(absPos.X, absPos.Y + absSize.Y + 4)
+            dropdownList.Position = UDim2.fromOffset(absPos.X, absPos.Y + absSize.Y + 8)
             
             dropdownList.Visible = true
             populateList()
@@ -1478,7 +1594,6 @@ function SpectrumX:CreateStatusCard(parent, config)
     
     local statusStroke = self:CreateStroke(frame, self.Theme.Accent, 2, 0.2)
     
-    -- Pulsing animation
     spawn(function()
         while frame.Parent do
             self:Tween(statusStroke, {Transparency = 0}, 0.8)
@@ -1556,7 +1671,6 @@ function SpectrumX:CreateStatusCard(parent, config)
     loadingBar.Parent = loadingBarBg
     self:CreateCorner(loadingBar, UDim.new(1, 0))
     
-    -- Make draggable
     self:MakeDraggable(frame, header)
     
     return {
@@ -1590,7 +1704,7 @@ end
 function SpectrumX:Notify(config)
     config = config or {}
     local text = config.Text or "Notification"
-    local type = config.Type or "info" -- info, success, warning, error
+    local type = config.Type or "info"
     local duration = config.Duration or 3
     
     local notification = Instance.new("Frame")
@@ -1632,12 +1746,10 @@ function SpectrumX:Notify(config)
     label.TextWrapped = true
     label.Parent = notification
     
-    -- Animate in
     self:Tween(notification, {Position = UDim2.new(1, -320, 0.9, 0)}, 0.5)
     
     task.wait(duration)
     
-    -- Animate out
     self:Tween(notification, {Position = UDim2.new(1, 320, 0.9, 0)}, 0.5)
     task.wait(0.5)
     notification:Destroy()
