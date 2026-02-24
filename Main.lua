@@ -1,5 +1,5 @@
 --[[
-    SpectrumX UI Library - Remastered v2.0
+    SpectrumX UI Library - Remastered v2.1
     A modern, fully responsive UI library for Roblox
     GitHub: https://github.com/spectrumxx/SpectrumXUI
 --]]
@@ -13,52 +13,11 @@ local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local HttpService = game:GetService("HttpService")
 local RunService = game:GetService("RunService")
-local GuiService = game:GetService("GuiService")
 
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
--- Responsive Scale System
-SpectrumX.Scale = {
-    IsMobile = false,
-    ScaleFactor = 1,
-    BaseWidth = 1920,
-    BaseHeight = 1080
-}
-
-function SpectrumX:UpdateScale()
-    local viewportSize = workspace.CurrentCamera.ViewportSize
-    local width, height = viewportSize.X, viewportSize.Y
-    
-    -- Detect mobile (touch-enabled and smaller screen)
-    self.Scale.IsMobile = UserInputService.TouchEnabled and (width < 1000 or height < 600)
-    
-    -- Calculate scale factor (clamp between 0.6 and 1.2)
-    local scaleX = width / self.Scale.BaseWidth
-    local scaleY = height / self.Scale.BaseHeight
-    self.Scale.ScaleFactor = math.clamp(math.min(scaleX, scaleY), 0.6, 1.2)
-    
-    -- Mobile gets extra reduction
-    if self.Scale.IsMobile then
-        self.Scale.ScaleFactor = self.Scale.ScaleFactor * 0.85
-    end
-end
-
-function SpectrumX:Scale(value)
-    if typeof(value) == "number" then
-        return math.floor(value * self.Scale.ScaleFactor)
-    elseif typeof(value) == "UDim2" then
-        return UDim2.new(
-            value.X.Scale, 
-            math.floor(value.X.Offset * self.Scale.ScaleFactor),
-            value.Y.Scale, 
-            math.floor(value.Y.Offset * self.Scale.ScaleFactor)
-        )
-    end
-    return value
-end
-
--- Theme Configuration - More compact sizes
+-- Theme Configuration
 SpectrumX.Theme = {
     Background = Color3.fromRGB(0, 0, 0),
     Header = Color3.fromRGB(0, 0, 0),
@@ -76,23 +35,45 @@ SpectrumX.Theme = {
     Info = Color3.fromRGB(100, 180, 255),
     Border = Color3.fromRGB(40, 40, 40),
     ToggleOff = Color3.fromRGB(50, 50, 50),
-    ToggleOn = Color3.fromRGB(255, 40, 40),
-    
-    -- Compact sizes
-    HeaderHeight = 45,
-    SidebarWidth = 45,
-    TabButtonSize = 32,
-    ElementHeight = 36,
-    InputHeight = 28,
-    ToggleHeight = 22,
-    SliderHeight = 6,
-    FontSize = {
-        Title = 18,
-        Header = 13,
-        Normal = 12,
-        Small = 11
-    }
+    ToggleOn = Color3.fromRGB(255, 40, 40)
 }
+
+-- Responsive Settings
+local ScaleData = {
+    IsMobile = false,
+    ScaleFactor = 1,
+    BaseWidth = 1920,
+    BaseHeight = 1080
+}
+
+function SpectrumX:UpdateScale()
+    local viewportSize = workspace.CurrentCamera.ViewportSize
+    local width, height = viewportSize.X, viewportSize.Y
+    
+    ScaleData.IsMobile = UserInputService.TouchEnabled and (width < 1000 or height < 600)
+    
+    local scaleX = width / ScaleData.BaseWidth
+    local scaleY = height / ScaleData.BaseHeight
+    ScaleData.ScaleFactor = math.clamp(math.min(scaleX, scaleY), 0.6, 1.2)
+    
+    if ScaleData.IsMobile then
+        ScaleData.ScaleFactor = ScaleData.ScaleFactor * 0.85
+    end
+end
+
+function SpectrumX:Scale(value)
+    if typeof(value) == "number" then
+        return math.floor(value * ScaleData.ScaleFactor)
+    elseif typeof(value) == "UDim2" then
+        return UDim2.new(
+            value.X.Scale, 
+            math.floor(value.X.Offset * ScaleData.ScaleFactor),
+            value.Y.Scale, 
+            math.floor(value.Y.Offset * ScaleData.ScaleFactor)
+        )
+    end
+    return value
+end
 
 -- Utility Functions
 function SpectrumX:Tween(obj, props, time, easingStyle, easingDirection)
@@ -108,7 +89,7 @@ end
 
 function SpectrumX:CreateCorner(parent, radius)
     local corner = Instance.new("UICorner")
-    corner.CornerRadius = radius or UDim.new(0, 6)
+    corner.CornerRadius = radius or UDim.new(0, 8)
     corner.Parent = parent
     return corner
 end
@@ -128,7 +109,7 @@ function SpectrumX:CreateShadow(parent)
     shadow.AnchorPoint = Vector2.new(0.5, 0.5)
     shadow.BackgroundTransparency = 1
     shadow.Position = UDim2.new(0.5, 0, 0.5, 0)
-    shadow.Size = UDim2.new(1, self:Scale(30), 1, self:Scale(30))
+    shadow.Size = self:Scale(UDim2.new(1, 40, 1, 40))
     shadow.ZIndex = -1
     shadow.Image = "rbxassetid://6015897843"
     shadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
@@ -181,61 +162,17 @@ function SpectrumX:MakeDraggable(frame, handle)
     return dragging
 end
 
--- Create Image or Text Icon
-function SpectrumX:CreateIcon(parent, config)
-    config = config or {}
-    local assetId = config.AssetId
-    local text = config.Text or "S"
-    local size = config.Size or UDim2.new(0, 32, 0, 32)
-    local position = config.Position or UDim2.new(0, 10, 0.5, -16)
-    
-    if assetId and assetId ~= "" then
-        -- Image icon
-        local imageLabel = Instance.new("ImageLabel")
-        imageLabel.Name = "Icon"
-        imageLabel.BackgroundTransparency = 1
-        imageLabel.Position = position
-        imageLabel.Size = self:Scale(size)
-        imageLabel.Image = assetId
-        imageLabel.Parent = parent
-        
-        -- Ensure image loads with proper aspect ratio
-        local aspectRatio = Instance.new("UIAspectRatioConstraint")
-        aspectRatio.AspectRatio = 1
-        aspectRatio.Parent = imageLabel
-        
-        return imageLabel
-    else
-        -- Text icon
-        local textLabel = Instance.new("TextLabel")
-        textLabel.Name = "Icon"
-        textLabel.BackgroundTransparency = 1
-        textLabel.Position = position
-        textLabel.Size = self:Scale(size)
-        textLabel.Font = Enum.Font.GothamBlack
-        textLabel.Text = text
-        textLabel.TextColor3 = config.Color or self.Theme.Accent
-        textLabel.TextSize = self:Scale(config.TextSize or 20)
-        textLabel.Parent = parent
-        
-        return textLabel
-    end
-end
-
 -- Main Window Creation
 function SpectrumX:CreateWindow(config)
     config = config or {}
     local window = setmetatable({}, self)
     
-    -- Update scale based on current device
     self:UpdateScale()
     
-    -- Destroy existing UI
     if PlayerGui:FindFirstChild("SpectrumX") then
         PlayerGui.SpectrumX:Destroy()
     end
     
-    -- ScreenGui
     self.ScreenGui = Instance.new("ScreenGui")
     self.ScreenGui.Name = "SpectrumX"
     self.ScreenGui.Parent = PlayerGui
@@ -244,11 +181,10 @@ function SpectrumX:CreateWindow(config)
     self.ScreenGui.IgnoreGuiInset = true
     self.ScreenGui.DisplayOrder = 999
     
-    -- Main Frame - Responsive size
     local defaultSize = UDim2.new(0, 520, 0, 320)
     local defaultPos = UDim2.new(0.5, -260, 0.5, -160)
     
-    if self.Scale.IsMobile then
+    if ScaleData.IsMobile then
         defaultSize = UDim2.new(0, 360, 0, 240)
         defaultPos = UDim2.new(0.5, -180, 0.5, -120)
     end
@@ -263,46 +199,62 @@ function SpectrumX:CreateWindow(config)
     self.MainFrame.Visible = true
     self.MainFrame.Parent = self.ScreenGui
     
-    self:CreateCorner(self.MainFrame, UDim.new(0, 10))
+    self:CreateCorner(self.MainFrame, UDim.new(0, 12))
     self:CreateShadow(self.MainFrame)
-    self:CreateStroke(self.MainFrame, self.Theme.Accent, 1.5, 0)
+    self:CreateStroke(self.MainFrame, self.Theme.Accent, 2, 0)
     
-    -- Header - Compact
+    -- Header
     self.Header = Instance.new("Frame")
     self.Header.Name = "Header"
     self.Header.BackgroundColor3 = self.Theme.Header
     self.Header.BorderSizePixel = 0
-    self.Header.Size = UDim2.new(1, 0, 0, self:Scale(self.Theme.HeaderHeight))
+    self.Header.Size = UDim2.new(1, 0, 0, self:Scale(50))
     self.Header.Parent = self.MainFrame
     
-    self:CreateCorner(self.Header, UDim.new(0, 10))
+    self:CreateCorner(self.Header, UDim.new(0, 12))
     
     local headerCover = Instance.new("Frame")
     headerCover.BorderSizePixel = 0
     headerCover.BackgroundColor3 = self.Theme.Header
-    headerCover.Size = UDim2.new(1, 0, 0, 10)
-    headerCover.Position = UDim2.new(0, 0, 1, -10)
+    headerCover.Size = UDim2.new(1, 0, 0, 12)
+    headerCover.Position = UDim2.new(0, 0, 1, -12)
     headerCover.Parent = self.Header
     
-    -- Title Icon - Supports AssetId
-    self:CreateIcon(self.Header, {
-        AssetId = config.IconAssetId,
-        Text = config.Icon or "S",
-        Size = UDim2.new(0, 28, 0, 28),
-        Position = UDim2.new(0, 12, 0.5, -14),
-        TextSize = 22
-    })
+    -- Title Icon (supports AssetId)
+    if config.IconAssetId and config.IconAssetId ~= "" then
+        local titleIcon = Instance.new("ImageLabel")
+        titleIcon.Name = "TitleIcon"
+        titleIcon.BackgroundTransparency = 1
+        titleIcon.Position = self:Scale(UDim2.new(0, 12, 0, 11))
+        titleIcon.Size = self:Scale(UDim2.new(0, 28, 0, 28))
+        titleIcon.Image = config.IconAssetId
+        titleIcon.Parent = self.Header
+        
+        local aspect = Instance.new("UIAspectRatioConstraint")
+        aspect.Parent = titleIcon
+    else
+        local titleIcon = Instance.new("TextLabel")
+        titleIcon.Name = "TitleIcon"
+        titleIcon.BackgroundTransparency = 1
+        titleIcon.Position = self:Scale(UDim2.new(0, 12, 0, 10))
+        titleIcon.Size = self:Scale(UDim2.new(0, 30, 0, 30))
+        titleIcon.Font = Enum.Font.GothamBlack
+        titleIcon.Text = config.Icon or "S"
+        titleIcon.TextColor3 = self.Theme.Accent
+        titleIcon.TextSize = self:Scale(22)
+        titleIcon.Parent = self.Header
+    end
     
     -- Title
     local title = Instance.new("TextLabel")
     title.Name = "Title"
     title.BackgroundTransparency = 1
-    title.Position = UDim2.new(0, self:Scale(50), 0, 0)
-    title.Size = UDim2.new(0, self:Scale(250), 1, 0)
+    title.Position = self:Scale(UDim2.new(0, 50, 0, 0))
+    title.Size = self:Scale(UDim2.new(0, 250, 1, 0))
     title.Font = Enum.Font.GothamBlack
     title.Text = config.Title or "Spectrum X"
     title.TextColor3 = self.Theme.Text
-    title.TextSize = self:Scale(self.Theme.FontSize.Title)
+    title.TextSize = self:Scale(18)
     title.TextXAlignment = Enum.TextXAlignment.Left
     title.Parent = self.Header
     
@@ -313,7 +265,7 @@ function SpectrumX:CreateWindow(config)
     }
     titleGradient.Parent = title
     
-    -- Close Button - Compact
+    -- Close Button
     local closeBtn = Instance.new("TextButton")
     closeBtn.Name = "CloseBtn"
     closeBtn.BackgroundTransparency = 1
@@ -335,21 +287,21 @@ function SpectrumX:CreateWindow(config)
         self.MainFrame.Visible = false 
     end)
     
-    -- Sidebar - Compact
+    -- Sidebar
     self.Sidebar = Instance.new("Frame")
     self.Sidebar.Name = "Sidebar"
     self.Sidebar.BackgroundColor3 = self.Theme.Sidebar
     self.Sidebar.BorderSizePixel = 0
-    self.Sidebar.Position = UDim2.new(0, 0, 0, self:Scale(self.Theme.HeaderHeight))
-    self.Sidebar.Size = UDim2.new(0, self:Scale(self.Theme.SidebarWidth), 1, -self:Scale(self.Theme.HeaderHeight))
+    self.Sidebar.Position = UDim2.new(0, 0, 0, self:Scale(50))
+    self.Sidebar.Size = UDim2.new(0, self:Scale(50), 1, -self:Scale(50))
     self.Sidebar.Parent = self.MainFrame
     
-    self:CreateCorner(self.Sidebar, UDim.new(0, 10))
+    self:CreateCorner(self.Sidebar, UDim.new(0, 12))
     
     local sidebarCover = Instance.new("Frame")
     sidebarCover.BackgroundColor3 = self.Theme.Sidebar
     sidebarCover.BorderSizePixel = 0
-    sidebarCover.Size = UDim2.new(1, 0, 0, 10)
+    sidebarCover.Size = UDim2.new(1, 0, 0, 12)
     sidebarCover.Parent = self.Sidebar
     
     local sidebarLayout = Instance.new("UIListLayout")
@@ -366,21 +318,17 @@ function SpectrumX:CreateWindow(config)
     self.ContentArea = Instance.new("Frame")
     self.ContentArea.Name = "ContentArea"
     self.ContentArea.BackgroundTransparency = 1
-    self.ContentArea.Position = UDim2.new(0, self:Scale(55), 0, self:Scale(55))
-    self.ContentArea.Size = UDim2.new(1, -self:Scale(65), 1, -self:Scale(65))
+    self.ContentArea.Position = self:Scale(UDim2.new(0, 60, 0, 60))
+    self.ContentArea.Size = UDim2.new(1, -self:Scale(70), 1, -self:Scale(70))
     self.ContentArea.Parent = self.MainFrame
     
     self.Tabs = {}
     self.CurrentTab = nil
-    self.Dropdowns = {} -- Track dropdowns for positioning
+    self.Dropdowns = {}
     
-    -- Make draggable
     self:MakeDraggable(self.MainFrame, self.Header)
-    
-    -- Create Floating Toggle Button
     self:CreateFloatingButton()
     
-    -- Handle resize
     workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(function()
         self:UpdateScale()
     end)
@@ -388,7 +336,7 @@ function SpectrumX:CreateWindow(config)
     return window
 end
 
--- Floating Toggle Button - Compact
+-- Floating Toggle Button
 function SpectrumX:CreateFloatingButton()
     local btnSize = self:Scale(45)
     
@@ -407,7 +355,7 @@ function SpectrumX:CreateFloatingButton()
     floatText.Font = Enum.Font.GothamBlack
     floatText.Text = "S"
     floatText.TextColor3 = self.Theme.Text
-    floatText.TextSize = self:Scale(20)
+    floatText.TextSize = self:Scale(18)
     floatText.Parent = self.FloatBtn
     
     local floatStroke = Instance.new("UIStroke")
@@ -415,7 +363,6 @@ function SpectrumX:CreateFloatingButton()
     floatStroke.Thickness = 2
     floatStroke.Parent = self.FloatBtn
     
-    -- Make draggable
     local fDragging, fDragInput, fDragStart, fStartPos
     
     local function updateFloat(input)
@@ -462,30 +409,27 @@ function SpectrumX:CreateFloatingButton()
     end)
 end
 
--- Create Tab - Supports AssetId for icon
+-- Create Tab (supports IconAssetId)
 function SpectrumX:CreateTab(config)
     config = config or {}
     local tabId = config.Name or "Tab"
     local tabIcon = config.Icon or string.sub(tabId, 1, 1)
-    local iconAssetId = config.IconAssetId
     
-    -- Tab Button - Compact
     local tabBtn = Instance.new("TextButton")
     tabBtn.Name = tabId .. "Tab"
     tabBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-    tabBtn.Size = UDim2.new(0, self:Scale(self.Theme.TabButtonSize), 0, self:Scale(self.Theme.TabButtonSize))
+    tabBtn.Size = UDim2.new(0, self:Scale(36), 0, self:Scale(36))
     tabBtn.Text = ""
     tabBtn.Parent = self.Sidebar
-    self:CreateCorner(tabBtn, UDim.new(0, 8))
+    self:CreateCorner(tabBtn, UDim.new(0, 10))
     
-    -- Icon (Image or Text)
-    if iconAssetId and iconAssetId ~= "" then
+    if config.IconAssetId and config.IconAssetId ~= "" then
         local icon = Instance.new("ImageLabel")
         icon.Name = "Icon"
         icon.BackgroundTransparency = 1
         icon.Position = UDim2.new(0.5, -10, 0.5, -10)
         icon.Size = UDim2.new(0, 20, 0, 20)
-        icon.Image = iconAssetId
+        icon.Image = config.IconAssetId
         icon.Parent = tabBtn
         
         local aspect = Instance.new("UIAspectRatioConstraint")
@@ -502,7 +446,6 @@ function SpectrumX:CreateTab(config)
         icon.Parent = tabBtn
     end
     
-    -- Page Container
     local pageContainer = Instance.new("Frame")
     pageContainer.Name = tabId .. "PageContainer"
     pageContainer.BackgroundTransparency = 1
@@ -510,7 +453,6 @@ function SpectrumX:CreateTab(config)
     pageContainer.Visible = false
     pageContainer.Parent = self.ContentArea
     
-    -- Divider
     local divider = Instance.new("Frame")
     divider.BackgroundColor3 = self.Theme.Border
     divider.BorderSizePixel = 0
@@ -518,13 +460,12 @@ function SpectrumX:CreateTab(config)
     divider.Size = UDim2.new(0, 2, 1, 0)
     divider.Parent = pageContainer
     
-    -- Left Side
     local leftSide = Instance.new("ScrollingFrame")
     leftSide.Name = "LeftSide"
     leftSide.BackgroundTransparency = 1
     leftSide.BorderSizePixel = 0
     leftSide.Size = UDim2.new(0.48, 0, 1, 0)
-    leftSide.ScrollBarThickness = 2
+    leftSide.ScrollBarThickness = 3
     leftSide.ScrollBarImageColor3 = self.Theme.Accent
     leftSide.Parent = pageContainer
     
@@ -537,14 +478,13 @@ function SpectrumX:CreateTab(config)
         leftSide.CanvasSize = UDim2.new(0, 0, 0, leftLayout.AbsoluteContentSize.Y + 10)
     end)
     
-    -- Right Side
     local rightSide = Instance.new("ScrollingFrame")
     rightSide.Name = "RightSide"
     rightSide.BackgroundTransparency = 1
     rightSide.BorderSizePixel = 0
     rightSide.Position = UDim2.new(0.52, 0, 0, 0)
     rightSide.Size = UDim2.new(0.48, 0, 1, 0)
-    rightSide.ScrollBarThickness = 2
+    rightSide.ScrollBarThickness = 3
     rightSide.ScrollBarImageColor3 = self.Theme.Accent
     rightSide.Parent = pageContainer
     
@@ -557,7 +497,6 @@ function SpectrumX:CreateTab(config)
         rightSide.CanvasSize = UDim2.new(0, 0, 0, rightLayout.AbsoluteContentSize.Y + 10)
     end)
     
-    -- Store tab data
     local tabData = {
         Button = tabBtn,
         Container = pageContainer,
@@ -566,12 +505,10 @@ function SpectrumX:CreateTab(config)
     }
     self.Tabs[tabId] = tabData
     
-    -- Tab click handler
     tabBtn.MouseButton1Click:Connect(function()
         self:SelectTab(tabId)
     end)
     
-    -- Select first tab automatically
     if not self.CurrentTab then
         self:SelectTab(tabId)
     end
@@ -582,24 +519,16 @@ end
 -- Select Tab
 function SpectrumX:SelectTab(tabId)
     for id, data in pairs(self.Tabs) do
+        local icon = data.Button:FindFirstChild("Icon")
         if id == tabId then
             data.Container.Visible = true
-            self:Tween(data.Button, {
-                BackgroundColor3 = self.Theme.Accent
-            }, 0.2)
-            
-            -- Update icon color
-            local icon = data.Button:FindFirstChild("Icon")
+            self:Tween(data.Button, {BackgroundColor3 = self.Theme.Accent}, 0.2)
             if icon and icon:IsA("TextLabel") then
                 self:Tween(icon, {TextColor3 = self.Theme.Text}, 0.2)
             end
         else
             data.Container.Visible = false
-            self:Tween(data.Button, {
-                BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-            }, 0.2)
-            
-            local icon = data.Button:FindFirstChild("Icon")
+            self:Tween(data.Button, {BackgroundColor3 = Color3.fromRGB(30, 30, 30)}, 0.2)
             if icon and icon:IsA("TextLabel") then
                 self:Tween(icon, {TextColor3 = self.Theme.TextMuted}, 0.2)
             end
@@ -612,17 +541,17 @@ end
 function SpectrumX:CreateSection(parent, text, color)
     local section = Instance.new("TextLabel")
     section.BackgroundTransparency = 1
-    section.Size = UDim2.new(1, 0, 0, self:Scale(24))
+    section.Size = UDim2.new(1, 0, 0, self:Scale(26))
     section.Font = Enum.Font.GothamBlack
     section.Text = text
     section.TextColor3 = color or self.Theme.Accent
-    section.TextSize = self:Scale(self.Theme.FontSize.Header)
+    section.TextSize = self:Scale(13)
     section.TextXAlignment = Enum.TextXAlignment.Left
     section.Parent = parent
     return section
 end
 
--- Create Toggle - Compact
+-- Create Toggle
 function SpectrumX:CreateToggle(parent, config)
     config = config or {}
     local text = config.Text or "Toggle"
@@ -631,18 +560,18 @@ function SpectrumX:CreateToggle(parent, config)
     
     local frame = Instance.new("Frame")
     frame.BackgroundColor3 = self.Theme.Card
-    frame.Size = UDim2.new(1, 0, 0, self:Scale(self.Theme.ElementHeight))
+    frame.Size = UDim2.new(1, 0, 0, self:Scale(40))
     frame.Parent = parent
     self:CreateCorner(frame)
     
     local label = Instance.new("TextLabel")
     label.BackgroundTransparency = 1
-    label.Position = UDim2.new(0, 10, 0, 0)
+    label.Position = UDim2.new(0, 12, 0, 0)
     label.Size = UDim2.new(0.7, 0, 1, 0)
     label.Font = Enum.Font.GothamSemibold
     label.Text = text
     label.TextColor3 = self.Theme.Text
-    label.TextSize = self:Scale(self.Theme.FontSize.Normal)
+    label.TextSize = self:Scale(12)
     label.TextXAlignment = Enum.TextXAlignment.Left
     label.Parent = frame
     
@@ -650,7 +579,7 @@ function SpectrumX:CreateToggle(parent, config)
     switchBg.Text = ""
     switchBg.BackgroundColor3 = default and self.Theme.ToggleOn or self.Theme.ToggleOff
     switchBg.Position = UDim2.new(1, -50, 0.5, -10)
-    switchBg.Size = UDim2.new(0, 40, 0, self:Scale(self.Theme.ToggleHeight))
+    switchBg.Size = UDim2.new(0, 40, 0, self:Scale(20))
     switchBg.Parent = frame
     self:CreateCorner(switchBg, UDim.new(1, 0))
     
@@ -693,7 +622,7 @@ function SpectrumX:CreateToggle(parent, config)
     }
 end
 
--- Create Button - Compact
+-- Create Button
 function SpectrumX:CreateButton(parent, config)
     config = config or {}
     local text = config.Text or "Button"
@@ -702,18 +631,18 @@ function SpectrumX:CreateButton(parent, config)
     
     local frame = Instance.new("Frame")
     frame.BackgroundColor3 = self.Theme.Background
-    frame.Size = UDim2.new(1, 0, 0, self:Scale(42))
+    frame.Size = UDim2.new(1, 0, 0, self:Scale(45))
     frame.Parent = parent
     self:CreateCorner(frame)
     
     local btn = Instance.new("TextButton")
     btn.Name = "Button"
     btn.BackgroundColor3 = self.Theme.Card
-    btn.Position = UDim2.new(0.03, 0, 0.1, 0)
-    btn.Size = UDim2.new(0.94, 0, 0.8, 0)
+    btn.Position = UDim2.new(0.05, 0, 0.1, 0)
+    btn.Size = UDim2.new(0.9, 0, 0.8, 0)
     btn.Font = Enum.Font.GothamBold
     btn.Text = text
-    btn.TextSize = self:Scale(self.Theme.FontSize.Normal)
+    btn.TextSize = self:Scale(12)
     btn.Parent = frame
     self:CreateCorner(btn)
     
@@ -753,7 +682,7 @@ function SpectrumX:CreateButton(parent, config)
     }
 end
 
--- Create Input - Compact
+-- Create Input
 function SpectrumX:CreateInput(parent, config)
     config = config or {}
     local labelText = config.Label or "Input"
@@ -763,32 +692,32 @@ function SpectrumX:CreateInput(parent, config)
     
     local frame = Instance.new("Frame")
     frame.BackgroundColor3 = self.Theme.Card
-    frame.Size = UDim2.new(1, 0, 0, self:Scale(48))
+    frame.Size = UDim2.new(1, 0, 0, self:Scale(50))
     frame.Parent = parent
     self:CreateCorner(frame)
     
     local label = Instance.new("TextLabel")
     label.BackgroundTransparency = 1
-    label.Position = UDim2.new(0, 10, 0, 0)
+    label.Position = UDim2.new(0, 12, 0, 0)
     label.Size = UDim2.new(0.6, 0, 0.55, 0)
     label.Font = Enum.Font.GothamSemibold
     label.Text = labelText
     label.TextColor3 = self.Theme.Text
-    label.TextSize = self:Scale(self.Theme.FontSize.Normal)
+    label.TextSize = self:Scale(12)
     label.TextXAlignment = Enum.TextXAlignment.Left
     label.Parent = frame
     
     local box = Instance.new("TextBox")
     box.BackgroundColor3 = self.Theme.Input
-    box.Position = UDim2.new(0.03, 0, 0.5, 0)
-    box.Size = UDim2.new(0.94, 0, 0, self:Scale(self.Theme.InputHeight))
+    box.Position = UDim2.new(0.05, 0, 0.5, 0)
+    box.Size = UDim2.new(0.9, 0, 0, self:Scale(24))
     box.Font = Enum.Font.Gotham
     box.Text = tostring(default)
     box.PlaceholderText = placeholder
     box.TextColor3 = self.Theme.Text
-    box.TextSize = self:Scale(self.Theme.FontSize.Small)
+    box.TextSize = self:Scale(11)
     box.Parent = frame
-    self:CreateCorner(box, UDim.new(0, 5))
+    self:CreateCorner(box, UDim.new(0, 6))
     
     local boxStroke = self:CreateStroke(box, self.Theme.Accent, 1, 0.7)
     
@@ -809,7 +738,7 @@ function SpectrumX:CreateInput(parent, config)
     }
 end
 
--- Create Number Input - Compact
+-- Create Number Input
 function SpectrumX:CreateNumberInput(parent, config)
     config = config or {}
     local labelText = config.Label or "Number"
@@ -820,31 +749,31 @@ function SpectrumX:CreateNumberInput(parent, config)
     
     local frame = Instance.new("Frame")
     frame.BackgroundColor3 = self.Theme.Card
-    frame.Size = UDim2.new(1, 0, 0, self:Scale(48))
+    frame.Size = UDim2.new(1, 0, 0, self:Scale(50))
     frame.Parent = parent
     self:CreateCorner(frame)
     
     local label = Instance.new("TextLabel")
     label.BackgroundTransparency = 1
-    label.Position = UDim2.new(0, 10, 0, 0)
+    label.Position = UDim2.new(0, 12, 0, 0)
     label.Size = UDim2.new(0.6, 0, 0.55, 0)
     label.Font = Enum.Font.GothamSemibold
     label.Text = labelText
     label.TextColor3 = self.Theme.Text
-    label.TextSize = self:Scale(self.Theme.FontSize.Normal)
+    label.TextSize = self:Scale(12)
     label.TextXAlignment = Enum.TextXAlignment.Left
     label.Parent = frame
     
     local box = Instance.new("TextBox")
     box.BackgroundColor3 = self.Theme.Input
-    box.Position = UDim2.new(0.03, 0, 0.5, 0)
-    box.Size = UDim2.new(0.94, 0, 0, self:Scale(self.Theme.InputHeight))
+    box.Position = UDim2.new(0.05, 0, 0.5, 0)
+    box.Size = UDim2.new(0.9, 0, 0, self:Scale(24))
     box.Font = Enum.Font.Gotham
     box.Text = tostring(default)
     box.TextColor3 = self.Theme.Text
-    box.TextSize = self:Scale(self.Theme.FontSize.Small)
+    box.TextSize = self:Scale(11)
     box.Parent = frame
-    self:CreateCorner(box, UDim.new(0, 5))
+    self:CreateCorner(box, UDim.new(0, 6))
     
     local boxStroke = self:CreateStroke(box, self.Theme.Accent, 1, 0.7)
     
@@ -875,7 +804,7 @@ function SpectrumX:CreateNumberInput(parent, config)
     }
 end
 
--- Create Slider - Compact
+-- Create Slider
 function SpectrumX:CreateSlider(parent, config)
     config = config or {}
     local text = config.Text or "Slider"
@@ -886,36 +815,36 @@ function SpectrumX:CreateSlider(parent, config)
     
     local frame = Instance.new("Frame")
     frame.BackgroundColor3 = self.Theme.Card
-    frame.Size = UDim2.new(1, 0, 0, self:Scale(55))
+    frame.Size = UDim2.new(1, 0, 0, self:Scale(58))
     frame.Parent = parent
     self:CreateCorner(frame)
     
     local label = Instance.new("TextLabel")
     label.BackgroundTransparency = 1
-    label.Position = UDim2.new(0, 10, 0, 6)
-    label.Size = UDim2.new(0.5, 0, 0, 18)
+    label.Position = UDim2.new(0, 12, 0, 6)
+    label.Size = UDim2.new(0.5, 0, 0, 20)
     label.Font = Enum.Font.GothamSemibold
     label.Text = text
     label.TextColor3 = self.Theme.Text
-    label.TextSize = self:Scale(self.Theme.FontSize.Normal)
+    label.TextSize = self:Scale(12)
     label.TextXAlignment = Enum.TextXAlignment.Left
     label.Parent = frame
     
     local valueLabel = Instance.new("TextLabel")
     valueLabel.BackgroundTransparency = 1
     valueLabel.Position = UDim2.new(0.6, 0, 0, 6)
-    valueLabel.Size = UDim2.new(0.35, 0, 0, 18)
+    valueLabel.Size = UDim2.new(0.35, 0, 0, 20)
     valueLabel.Font = Enum.Font.GothamBold
     valueLabel.Text = tostring(default)
     valueLabel.TextColor3 = self.Theme.Accent
-    valueLabel.TextSize = self:Scale(self.Theme.FontSize.Normal)
+    valueLabel.TextSize = self:Scale(12)
     valueLabel.TextXAlignment = Enum.TextXAlignment.Right
     valueLabel.Parent = frame
     
     local sliderBg = Instance.new("Frame")
     sliderBg.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-    sliderBg.Position = UDim2.new(0.03, 0, 0, 34)
-    sliderBg.Size = UDim2.new(0.94, 0, 0, self:Scale(self.Theme.SliderHeight))
+    sliderBg.Position = UDim2.new(0.05, 0, 0, 36)
+    sliderBg.Size = UDim2.new(0.9, 0, 0, self:Scale(6))
     sliderBg.Parent = frame
     self:CreateCorner(sliderBg, UDim.new(1, 0))
     
@@ -990,7 +919,7 @@ function SpectrumX:CreateSlider(parent, config)
     }
 end
 
--- FIXED: Create Dropdown - Opens below button, not overlapping
+-- FIXED: Create Dropdown - Opens below button
 function SpectrumX:CreateDropdown(parent, config)
     config = config or {}
     local labelText = config.Label or "Dropdown"
@@ -1000,48 +929,47 @@ function SpectrumX:CreateDropdown(parent, config)
     
     local frame = Instance.new("Frame")
     frame.BackgroundColor3 = self.Theme.Card
-    frame.Size = UDim2.new(1, 0, 0, self:Scale(52))
+    frame.Size = UDim2.new(1, 0, 0, self:Scale(55))
     frame.ClipsDescendants = false
     frame.Parent = parent
     self:CreateCorner(frame)
     
     local label = Instance.new("TextLabel")
     label.BackgroundTransparency = 1
-    label.Position = UDim2.new(0, 10, 0, 6)
-    label.Size = UDim2.new(1, -20, 0, 16)
+    label.Position = UDim2.new(0, 12, 0, 8)
+    label.Size = UDim2.new(1, -24, 0, 18)
     label.Font = Enum.Font.GothamBold
     label.Text = labelText
     label.TextColor3 = self.Theme.Text
-    label.TextSize = self:Scale(self.Theme.FontSize.Small)
+    label.TextSize = self:Scale(11)
     label.TextXAlignment = Enum.TextXAlignment.Left
     label.Parent = frame
     
     local dropdownBtn = Instance.new("TextButton")
     dropdownBtn.BackgroundColor3 = self.Theme.Input
-    dropdownBtn.Position = UDim2.new(0, 10, 0, 26)
-    dropdownBtn.Size = UDim2.new(1, -20, 0, self:Scale(22))
+    dropdownBtn.Position = UDim2.new(0, 12, 0, 28)
+    dropdownBtn.Size = UDim2.new(1, -24, 0, self:Scale(22))
     dropdownBtn.Font = Enum.Font.GothamSemibold
     dropdownBtn.Text = "  " .. (default or "Select...")
     dropdownBtn.TextColor3 = self.Theme.TextSecondary
-    dropdownBtn.TextSize = self:Scale(self.Theme.FontSize.Small)
+    dropdownBtn.TextSize = self:Scale(11)
     dropdownBtn.TextXAlignment = Enum.TextXAlignment.Left
     dropdownBtn.ZIndex = 2
     dropdownBtn.Parent = frame
-    self:CreateCorner(dropdownBtn, UDim.new(0, 5))
+    self:CreateCorner(dropdownBtn, UDim.new(0, 6))
     
-    local dropdownStroke = self:CreateStroke(dropdownBtn, self.Theme.Accent, 1, 0.6)
+    local dropdownStroke = self:CreateStroke(dropdownBtn, self.Theme.Accent, 1.2, 0.6)
     
     local arrowLabel = Instance.new("TextLabel")
     arrowLabel.BackgroundTransparency = 1
-    arrowLabel.Position = UDim2.new(1, -18, 0, 0)
-    arrowLabel.Size = UDim2.new(0, 18, 1, 0)
+    arrowLabel.Position = UDim2.new(1, -20, 0, 0)
+    arrowLabel.Size = UDim2.new(0, 20, 1, 0)
     arrowLabel.Font = Enum.Font.GothamBold
     arrowLabel.Text = "▼"
     arrowLabel.TextColor3 = self.Theme.Accent
-    arrowLabel.TextSize = self:Scale(9)
+    arrowLabel.TextSize = self:Scale(10)
     arrowLabel.Parent = dropdownBtn
     
-    -- FIXED: Dropdown List - Positioned below button with proper ZIndex
     local dropdownList = Instance.new("ScrollingFrame")
     dropdownList.Name = "DropdownList_" .. labelText .. "_" .. tostring(tick())
     dropdownList.BackgroundColor3 = self.Theme.Card
@@ -1049,56 +977,50 @@ function SpectrumX:CreateDropdown(parent, config)
     dropdownList.ScrollBarThickness = 2
     dropdownList.ScrollBarImageColor3 = self.Theme.Accent
     dropdownList.Visible = false
-    dropdownList.ZIndex = 3000
+    dropdownList.ZIndex = 2000
     dropdownList.BorderSizePixel = 0
     dropdownList.Parent = self.ScreenGui
-    self:CreateCorner(dropdownList, UDim.new(0, 5))
+    self:CreateCorner(dropdownList, UDim.new(0, 6))
     
     local listStroke = self:CreateStroke(dropdownList, self.Theme.Accent, 1.5, 0)
     
     local listLayout = Instance.new("UIListLayout")
     listLayout.SortOrder = Enum.SortOrder.LayoutOrder
-    listLayout.Padding = UDim.new(0, 3)
+    listLayout.Padding = UDim.new(0, 4)
     listLayout.Parent = dropdownList
     
     local listPadding = Instance.new("UIPadding")
-    listPadding.PaddingTop = UDim.new(0, 5)
-    listPadding.PaddingBottom = UDim.new(0, 5)
-    listPadding.PaddingLeft = UDim.new(0, 5)
-    listPadding.PaddingRight = UDim.new(0, 5)
+    listPadding.PaddingTop = UDim.new(0, 6)
+    listPadding.PaddingBottom = UDim.new(0, 6)
+    listPadding.PaddingLeft = UDim.new(0, 6)
+    listPadding.PaddingRight = UDim.new(0, 6)
     listPadding.Parent = dropdownList
     
-    -- Store reference for global close
     table.insert(self.Dropdowns, dropdownList)
     
     local selectedValue = default
     local isOpen = false
     
-    local function updateDropdownHeight()
-        local contentHeight = listLayout.AbsoluteContentSize.Y + 10
-        local maxHeight = self:Scale(150)
-        local targetHeight = math.min(contentHeight, maxHeight)
-        dropdownList.CanvasSize = UDim2.new(0, 0, 0, contentHeight)
-        return targetHeight
-    end
-    
     local function positionDropdown()
         local absPos = dropdownBtn.AbsolutePosition
         local absSize = dropdownBtn.AbsoluteSize
-        local targetHeight = updateDropdownHeight()
         
-        -- FIXED: Position BELOW the button, not overlapping
+        local contentHeight = listLayout.AbsoluteContentSize.Y + 12
+        local maxHeight = self:Scale(160)
+        local targetHeight = math.min(contentHeight, maxHeight)
+        
         local targetY = absPos.Y + absSize.Y + 4
         
-        -- Check if would go off screen bottom
         local screenHeight = workspace.CurrentCamera.ViewportSize.Y
         if targetY + targetHeight > screenHeight then
-            -- Position ABOVE instead
             targetY = absPos.Y - targetHeight - 4
         end
         
         dropdownList.Position = UDim2.fromOffset(absPos.X, targetY)
         dropdownList.Size = UDim2.new(0, absSize.X, 0, 0)
+        dropdownList.CanvasSize = UDim2.new(0, 0, 0, contentHeight)
+        
+        return targetHeight
     end
     
     local function populateList()
@@ -1113,13 +1035,13 @@ function SpectrumX:CreateDropdown(parent, config)
             
             local optionFrame = Instance.new("Frame")
             optionFrame.BackgroundColor3 = isSelected and Color3.fromRGB(40, 60, 40) or self.Theme.Input
-            optionFrame.Size = UDim2.new(1, 0, 0, self:Scale(26))
-            optionFrame.ZIndex = 3001
+            optionFrame.Size = UDim2.new(1, 0, 0, self:Scale(28))
+            optionFrame.ZIndex = 2001
             optionFrame.Parent = dropdownList
-            self:CreateCorner(optionFrame, UDim.new(0, 4))
+            self:CreateCorner(optionFrame, UDim.new(0, 6))
             
             if isSelected then
-                self:CreateStroke(optionFrame, Color3.fromRGB(80, 255, 80), 1, 0.3)
+                self:CreateStroke(optionFrame, Color3.fromRGB(80, 255, 80), 1.5, 0.3)
             end
             
             local optionBtn = Instance.new("TextButton")
@@ -1129,13 +1051,13 @@ function SpectrumX:CreateDropdown(parent, config)
             optionBtn.Font = Enum.Font.GothamSemibold
             optionBtn.Text = (isSelected and "● " or "   ") .. option
             optionBtn.TextColor3 = isSelected and Color3.fromRGB(150, 255, 150) or self.Theme.TextSecondary
-            optionBtn.TextSize = self:Scale(self.Theme.FontSize.Small)
+            optionBtn.TextSize = self:Scale(11)
             optionBtn.TextXAlignment = Enum.TextXAlignment.Left
-            optionBtn.ZIndex = 3002
+            optionBtn.ZIndex = 2002
             optionBtn.Parent = optionFrame
             
             local padding = Instance.new("UIPadding")
-            padding.PaddingLeft = UDim.new(0, 8)
+            padding.PaddingLeft = UDim.new(0, 10)
             padding.Parent = optionBtn
             
             optionBtn.MouseButton1Click:Connect(function()
@@ -1143,11 +1065,10 @@ function SpectrumX:CreateDropdown(parent, config)
                 dropdownBtn.Text = "  " .. option
                 callback(option)
                 
-                -- Close dropdown
                 isOpen = false
-                self:Tween(dropdownList, {Size = UDim2.new(0, dropdownBtn.AbsoluteSize.X, 0, 0)}, 0.25)
+                self:Tween(dropdownList, {Size = UDim2.new(0, dropdownBtn.AbsoluteSize.X, 0, 0)}, 0.3)
                 self:Tween(arrowLabel, {Rotation = 0}, 0.2)
-                task.wait(0.25)
+                task.wait(0.3)
                 dropdownList.Visible = false
             end)
             
@@ -1168,30 +1089,27 @@ function SpectrumX:CreateDropdown(parent, config)
     dropdownBtn.MouseButton1Click:Connect(function()
         if isOpen then
             isOpen = false
-            self:Tween(dropdownList, {Size = UDim2.new(0, dropdownBtn.AbsoluteSize.X, 0, 0)}, 0.25)
+            self:Tween(dropdownList, {Size = UDim2.new(0, dropdownBtn.AbsoluteSize.X, 0, 0)}, 0.3)
             self:Tween(arrowLabel, {Rotation = 0}, 0.2)
-            task.wait(0.25)
+            task.wait(0.3)
             dropdownList.Visible = false
         else
-            -- Close all other dropdowns
             for _, dd in ipairs(self.Dropdowns) do
                 if dd ~= dropdownList then
                     dd.Visible = false
                 end
             end
             
-            positionDropdown()
             populateList()
+            local targetHeight = positionDropdown()
             dropdownList.Visible = true
             
-            local targetHeight = updateDropdownHeight()
-            self:Tween(dropdownList, {Size = UDim2.new(0, dropdownBtn.AbsoluteSize.X, 0, targetHeight)}, 0.25)
+            self:Tween(dropdownList, {Size = UDim2.new(0, dropdownBtn.AbsoluteSize.X, 0, targetHeight)}, 0.3)
             self:Tween(arrowLabel, {Rotation = 180}, 0.2)
             isOpen = true
         end
     end)
     
-    -- Close when clicking elsewhere
     UserInputService.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or 
            input.UserInputType == Enum.UserInputType.Touch then
@@ -1202,7 +1120,6 @@ function SpectrumX:CreateDropdown(parent, config)
                 local btnPos = dropdownBtn.AbsolutePosition
                 local btnSize = dropdownBtn.AbsoluteSize
                 
-                -- Check if click is outside both button and list
                 local inList = pos.X >= listPos.X and pos.X <= listPos.X + listSize.X and
                               pos.Y >= listPos.Y and pos.Y <= listPos.Y + listSize.Y
                 local inBtn = pos.X >= btnPos.X and pos.X <= btnPos.X + btnSize.X and
@@ -1210,9 +1127,9 @@ function SpectrumX:CreateDropdown(parent, config)
                 
                 if not inList and not inBtn then
                     isOpen = false
-                    self:Tween(dropdownList, {Size = UDim2.new(0, dropdownBtn.AbsoluteSize.X, 0, 0)}, 0.25)
+                    self:Tween(dropdownList, {Size = UDim2.new(0, dropdownBtn.AbsoluteSize.X, 0, 0)}, 0.3)
                     self:Tween(arrowLabel, {Rotation = 0}, 0.2)
-                    task.wait(0.25)
+                    task.wait(0.3)
                     dropdownList.Visible = false
                 end
             end
@@ -1235,7 +1152,7 @@ function SpectrumX:CreateDropdown(parent, config)
     }
 end
 
--- FIXED: Create Multi Dropdown - Same fixes as single dropdown
+-- FIXED: Create Multi Dropdown
 function SpectrumX:CreateMultiDropdown(parent, config)
     config = config or {}
     local labelText = config.Label or "Multi Select"
@@ -1245,48 +1162,47 @@ function SpectrumX:CreateMultiDropdown(parent, config)
     
     local frame = Instance.new("Frame")
     frame.BackgroundColor3 = self.Theme.Card
-    frame.Size = UDim2.new(1, 0, 0, self:Scale(52))
+    frame.Size = UDim2.new(1, 0, 0, self:Scale(55))
     frame.ClipsDescendants = false
     frame.Parent = parent
     self:CreateCorner(frame)
     
     local label = Instance.new("TextLabel")
     label.BackgroundTransparency = 1
-    label.Position = UDim2.new(0, 10, 0, 6)
-    label.Size = UDim2.new(1, -20, 0, 16)
+    label.Position = UDim2.new(0, 12, 0, 8)
+    label.Size = UDim2.new(1, -24, 0, 18)
     label.Font = Enum.Font.GothamBold
     label.Text = labelText
     label.TextColor3 = self.Theme.Text
-    label.TextSize = self:Scale(self.Theme.FontSize.Small)
+    label.TextSize = self:Scale(11)
     label.TextXAlignment = Enum.TextXAlignment.Left
     label.Parent = frame
     
     local dropdownBtn = Instance.new("TextButton")
     dropdownBtn.BackgroundColor3 = self.Theme.Input
-    dropdownBtn.Position = UDim2.new(0, 10, 0, 26)
-    dropdownBtn.Size = UDim2.new(1, -20, 0, self:Scale(22))
+    dropdownBtn.Position = UDim2.new(0, 12, 0, 28)
+    dropdownBtn.Size = UDim2.new(1, -24, 0, self:Scale(22))
     dropdownBtn.Font = Enum.Font.GothamSemibold
     dropdownBtn.Text = "  Select Options..."
     dropdownBtn.TextColor3 = self.Theme.TextSecondary
-    dropdownBtn.TextSize = self:Scale(self.Theme.FontSize.Small)
+    dropdownBtn.TextSize = self:Scale(11)
     dropdownBtn.TextXAlignment = Enum.TextXAlignment.Left
     dropdownBtn.ZIndex = 2
     dropdownBtn.Parent = frame
-    self:CreateCorner(dropdownBtn, UDim.new(0, 5))
+    self:CreateCorner(dropdownBtn, UDim.new(0, 6))
     
-    local dropdownStroke = self:CreateStroke(dropdownBtn, self.Theme.Accent, 1, 0.6)
+    local dropdownStroke = self:CreateStroke(dropdownBtn, self.Theme.Accent, 1.2, 0.6)
     
     local arrowLabel = Instance.new("TextLabel")
     arrowLabel.BackgroundTransparency = 1
-    arrowLabel.Position = UDim2.new(1, -18, 0, 0)
-    arrowLabel.Size = UDim2.new(0, 18, 1, 0)
+    arrowLabel.Position = UDim2.new(1, -20, 0, 0)
+    arrowLabel.Size = UDim2.new(0, 20, 1, 0)
     arrowLabel.Font = Enum.Font.GothamBold
     arrowLabel.Text = "▼"
     arrowLabel.TextColor3 = self.Theme.Accent
-    arrowLabel.TextSize = self:Scale(9)
+    arrowLabel.TextSize = self:Scale(10)
     arrowLabel.Parent = dropdownBtn
     
-    -- Dropdown List
     local dropdownList = Instance.new("ScrollingFrame")
     dropdownList.Name = "MultiDropdownList_" .. labelText .. "_" .. tostring(tick())
     dropdownList.BackgroundColor3 = self.Theme.Card
@@ -1294,10 +1210,10 @@ function SpectrumX:CreateMultiDropdown(parent, config)
     dropdownList.ScrollBarThickness = 2
     dropdownList.ScrollBarImageColor3 = self.Theme.Accent
     dropdownList.Visible = false
-    dropdownList.ZIndex = 3000
+    dropdownList.ZIndex = 2000
     dropdownList.BorderSizePixel = 0
     dropdownList.Parent = self.ScreenGui
-    self:CreateCorner(dropdownList, UDim.new(0, 5))
+    self:CreateCorner(dropdownList, UDim.new(0, 6))
     
     table.insert(self.Dropdowns, dropdownList)
     
@@ -1305,14 +1221,14 @@ function SpectrumX:CreateMultiDropdown(parent, config)
     
     local listLayout = Instance.new("UIListLayout")
     listLayout.SortOrder = Enum.SortOrder.LayoutOrder
-    listLayout.Padding = UDim.new(0, 3)
+    listLayout.Padding = UDim.new(0, 4)
     listLayout.Parent = dropdownList
     
     local listPadding = Instance.new("UIPadding")
-    listPadding.PaddingTop = UDim.new(0, 5)
-    listPadding.PaddingBottom = UDim.new(0, 5)
-    listPadding.PaddingLeft = UDim.new(0, 5)
-    listPadding.PaddingRight = UDim.new(0, 5)
+    listPadding.PaddingTop = UDim.new(0, 6)
+    listPadding.PaddingBottom = UDim.new(0, 6)
+    listPadding.PaddingLeft = UDim.new(0, 6)
+    listPadding.PaddingRight = UDim.new(0, 6)
     listPadding.Parent = dropdownList
     
     local selectedValues = {}
@@ -1335,8 +1251,8 @@ function SpectrumX:CreateMultiDropdown(parent, config)
         local absPos = dropdownBtn.AbsolutePosition
         local absSize = dropdownBtn.AbsoluteSize
         
-        local contentHeight = listLayout.AbsoluteContentSize.Y + 10
-        local maxHeight = self:Scale(150)
+        local contentHeight = listLayout.AbsoluteContentSize.Y + 12
+        local maxHeight = self:Scale(160)
         local targetHeight = math.min(contentHeight, maxHeight)
         
         local targetY = absPos.Y + absSize.Y + 4
@@ -1386,13 +1302,13 @@ function SpectrumX:CreateMultiDropdown(parent, config)
             
             local optionFrame = Instance.new("Frame")
             optionFrame.BackgroundColor3 = isSelected and Color3.fromRGB(40, 60, 40) or self.Theme.Input
-            optionFrame.Size = UDim2.new(1, 0, 0, self:Scale(26))
-            optionFrame.ZIndex = 3001
+            optionFrame.Size = UDim2.new(1, 0, 0, self:Scale(28))
+            optionFrame.ZIndex = 2001
             optionFrame.Parent = dropdownList
-            self:CreateCorner(optionFrame, UDim.new(0, 4))
+            self:CreateCorner(optionFrame, UDim.new(0, 6))
             
             if isSelected then
-                self:CreateStroke(optionFrame, Color3.fromRGB(80, 255, 80), 1, 0.3)
+                self:CreateStroke(optionFrame, Color3.fromRGB(80, 255, 80), 1.5, 0.3)
             end
             
             local optionBtn = Instance.new("TextButton")
@@ -1402,13 +1318,13 @@ function SpectrumX:CreateMultiDropdown(parent, config)
             optionBtn.Font = Enum.Font.GothamSemibold
             optionBtn.Text = (isSelected and (priority .. ". ") or "   ") .. option
             optionBtn.TextColor3 = isSelected and Color3.fromRGB(150, 255, 150) or self.Theme.TextSecondary
-            optionBtn.TextSize = self:Scale(self.Theme.FontSize.Small)
+            optionBtn.TextSize = self:Scale(11)
             optionBtn.TextXAlignment = Enum.TextXAlignment.Left
-            optionBtn.ZIndex = 3002
+            optionBtn.ZIndex = 2002
             optionBtn.Parent = optionFrame
             
             local padding = Instance.new("UIPadding")
-            padding.PaddingLeft = UDim.new(0, 8)
+            padding.PaddingLeft = UDim.new(0, 10)
             padding.Parent = optionBtn
             
             optionBtn.MouseButton1Click:Connect(function()
@@ -1435,9 +1351,9 @@ function SpectrumX:CreateMultiDropdown(parent, config)
     dropdownBtn.MouseButton1Click:Connect(function()
         if isOpen then
             isOpen = false
-            self:Tween(dropdownList, {Size = UDim2.new(0, dropdownBtn.AbsoluteSize.X, 0, 0)}, 0.25)
+            self:Tween(dropdownList, {Size = UDim2.new(0, dropdownBtn.AbsoluteSize.X, 0, 0)}, 0.3)
             self:Tween(arrowLabel, {Rotation = 0}, 0.2)
-            task.wait(0.25)
+            task.wait(0.3)
             dropdownList.Visible = false
         else
             for _, dd in ipairs(self.Dropdowns) do
@@ -1450,7 +1366,7 @@ function SpectrumX:CreateMultiDropdown(parent, config)
             local targetHeight = positionDropdown()
             dropdownList.Visible = true
             
-            self:Tween(dropdownList, {Size = UDim2.new(0, dropdownBtn.AbsoluteSize.X, 0, targetHeight)}, 0.25)
+            self:Tween(dropdownList, {Size = UDim2.new(0, dropdownBtn.AbsoluteSize.X, 0, targetHeight)}, 0.3)
             self:Tween(arrowLabel, {Rotation = 180}, 0.2)
             isOpen = true
         end
@@ -1473,9 +1389,9 @@ function SpectrumX:CreateMultiDropdown(parent, config)
                 
                 if not inList and not inBtn then
                     isOpen = false
-                    self:Tween(dropdownList, {Size = UDim2.new(0, dropdownBtn.AbsoluteSize.X, 0, 0)}, 0.25)
+                    self:Tween(dropdownList, {Size = UDim2.new(0, dropdownBtn.AbsoluteSize.X, 0, 0)}, 0.3)
                     self:Tween(arrowLabel, {Rotation = 0}, 0.2)
-                    task.wait(0.25)
+                    task.wait(0.3)
                     dropdownList.Visible = false
                 end
             end
@@ -1500,7 +1416,7 @@ function SpectrumX:CreateMultiDropdown(parent, config)
     }
 end
 
--- Create Checkbox - Compact
+-- Create Checkbox
 function SpectrumX:CreateCheckbox(parent, config)
     config = config or {}
     local text = config.Text or "Checkbox"
@@ -1509,32 +1425,32 @@ function SpectrumX:CreateCheckbox(parent, config)
     
     local frame = Instance.new("Frame")
     frame.BackgroundColor3 = self.Theme.Card
-    frame.Size = UDim2.new(1, 0, 0, self:Scale(34))
+    frame.Size = UDim2.new(1, 0, 0, self:Scale(36))
     frame.Parent = parent
     self:CreateCorner(frame)
     
     local checkbox = Instance.new("TextButton")
     checkbox.Name = "Checkbox"
     checkbox.BackgroundColor3 = default and self.Theme.Accent or self.Theme.Input
-    checkbox.Position = UDim2.new(0, 10, 0.5, -8)
-    checkbox.Size = UDim2.new(0, 16, 0, 16)
+    checkbox.Position = UDim2.new(0, 12, 0.5, -9)
+    checkbox.Size = UDim2.new(0, 18, 0, 18)
     checkbox.Font = Enum.Font.GothamBold
     checkbox.Text = default and "✓" or ""
     checkbox.TextColor3 = self.Theme.Text
-    checkbox.TextSize = self:Scale(11)
+    checkbox.TextSize = self:Scale(12)
     checkbox.Parent = frame
-    self:CreateCorner(checkbox, UDim.new(0, 3))
+    self:CreateCorner(checkbox, UDim.new(0, 4))
     
-    local checkboxStroke = self:CreateStroke(checkbox, self.Theme.Accent, 1, 0.5)
+    local checkboxStroke = self:CreateStroke(checkbox, self.Theme.Accent, 1.5, 0.5)
     
     local label = Instance.new("TextLabel")
     label.BackgroundTransparency = 1
-    label.Position = UDim2.new(0, 34, 0, 0)
-    label.Size = UDim2.new(1, -44, 1, 0)
+    label.Position = UDim2.new(0, 38, 0, 0)
+    label.Size = UDim2.new(1, -50, 1, 0)
     label.Font = Enum.Font.GothamSemibold
     label.Text = text
     label.TextColor3 = self.Theme.Text
-    label.TextSize = self:Scale(self.Theme.FontSize.Normal)
+    label.TextSize = self:Scale(12)
     label.TextXAlignment = Enum.TextXAlignment.Left
     label.Parent = frame
     
@@ -1570,12 +1486,12 @@ function SpectrumX:CreateCheckbox(parent, config)
     }
 end
 
--- Create Label - Compact
+-- Create Label
 function SpectrumX:CreateLabel(parent, config)
     config = config or {}
     local text = config.Text or "Label"
     local color = config.Color or self.Theme.Text
-    local size = config.Size or UDim2.new(1, 0, 0, self:Scale(28))
+    local size = config.Size or UDim2.new(1, 0, 0, self:Scale(30))
     
     local frame = Instance.new("Frame")
     frame.BackgroundColor3 = self.Theme.Card
@@ -1585,12 +1501,12 @@ function SpectrumX:CreateLabel(parent, config)
     
     local label = Instance.new("TextLabel")
     label.BackgroundTransparency = 1
-    label.Position = UDim2.new(0, 10, 0, 0)
-    label.Size = UDim2.new(1, -20, 1, 0)
+    label.Position = UDim2.new(0, 12, 0, 0)
+    label.Size = UDim2.new(1, -24, 1, 0)
     label.Font = Enum.Font.GothamSemibold
     label.Text = text
     label.TextColor3 = color
-    label.TextSize = self:Scale(self.Theme.FontSize.Normal)
+    label.TextSize = self:Scale(12)
     label.TextXAlignment = Enum.TextXAlignment.Left
     label.Parent = frame
     
@@ -1611,7 +1527,7 @@ function SpectrumX:CreateSeparator(parent)
     return separator
 end
 
--- Create Status Card - Compact
+-- Create Status Card
 function SpectrumX:CreateStatusCard(parent, config)
     config = config or {}
     local title = config.Title or "Status"
@@ -1620,14 +1536,13 @@ function SpectrumX:CreateStatusCard(parent, config)
     frame.Name = "StatusCard"
     frame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
     frame.BorderSizePixel = 0
-    frame.Size = UDim2.new(1, 0, 0, self:Scale(90))
+    frame.Size = UDim2.new(1, 0, 0, self:Scale(100))
     frame.Active = true
     frame.Parent = parent
-    self:CreateCorner(frame, UDim.new(0, 8))
+    self:CreateCorner(frame, UDim.new(0, 10))
     
-    local statusStroke = self:CreateStroke(frame, self.Theme.Accent, 1.5, 0.2)
+    local statusStroke = self:CreateStroke(frame, self.Theme.Accent, 2, 0.2)
     
-    -- Pulsing animation
     spawn(function()
         while frame.Parent do
             self:Tween(statusStroke, {Transparency = 0}, 0.8)
@@ -1641,15 +1556,15 @@ function SpectrumX:CreateStatusCard(parent, config)
     header.Name = "Header"
     header.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
     header.BorderSizePixel = 0
-    header.Size = UDim2.new(1, 0, 0, self:Scale(26))
+    header.Size = UDim2.new(1, 0, 0, self:Scale(30))
     header.Parent = frame
-    self:CreateCorner(header, UDim.new(0, 8))
+    self:CreateCorner(header, UDim.new(0, 10))
     
     local headerCover = Instance.new("Frame")
     headerCover.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
     headerCover.BorderSizePixel = 0
-    headerCover.Size = UDim2.new(1, 0, 0, 8)
-    headerCover.Position = UDim2.new(0, 0, 1, -8)
+    headerCover.Size = UDim2.new(1, 0, 0, 10)
+    headerCover.Position = UDim2.new(0, 0, 1, -10)
     headerCover.Parent = header
     
     local statusTitle = Instance.new("TextLabel")
@@ -1659,29 +1574,29 @@ function SpectrumX:CreateStatusCard(parent, config)
     statusTitle.Font = Enum.Font.GothamBold
     statusTitle.Text = title
     statusTitle.TextColor3 = self.Theme.Text
-    statusTitle.TextSize = self:Scale(self.Theme.FontSize.Small)
+    statusTitle.TextSize = self:Scale(11)
     statusTitle.TextXAlignment = Enum.TextXAlignment.Left
     statusTitle.Parent = header
     
     local content = Instance.new("Frame")
     content.BackgroundTransparency = 1
-    content.Position = UDim2.new(0, 10, 0, self:Scale(32))
-    content.Size = UDim2.new(1, -20, 1, -self:Scale(38))
+    content.Position = UDim2.new(0, 10, 0, self:Scale(36))
+    content.Size = UDim2.new(1, -20, 1, -self:Scale(42))
     content.Parent = frame
     
     local statusLabel = Instance.new("TextLabel")
     statusLabel.BackgroundTransparency = 1
-    statusLabel.Size = UDim2.new(1, 0, 0, self:Scale(18))
+    statusLabel.Size = UDim2.new(1, 0, 0, self:Scale(20))
     statusLabel.Font = Enum.Font.GothamSemibold
     statusLabel.Text = "● Idle"
     statusLabel.TextColor3 = self.Theme.TextMuted
-    statusLabel.TextSize = self:Scale(self.Theme.FontSize.Small)
+    statusLabel.TextSize = self:Scale(12)
     statusLabel.TextXAlignment = Enum.TextXAlignment.Left
     statusLabel.Parent = content
     
     local infoLabel = Instance.new("TextLabel")
     infoLabel.BackgroundTransparency = 1
-    infoLabel.Position = UDim2.new(0, 0, 0, self:Scale(20))
+    infoLabel.Position = UDim2.new(0, 0, 0, self:Scale(22))
     infoLabel.Size = UDim2.new(1, 0, 0, self:Scale(16))
     infoLabel.Font = Enum.Font.Gotham
     infoLabel.Text = "Ready"
@@ -1692,8 +1607,8 @@ function SpectrumX:CreateStatusCard(parent, config)
     
     local loadingBarBg = Instance.new("Frame")
     loadingBarBg.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-    loadingBarBg.Position = UDim2.new(0, 0, 1, -6)
-    loadingBarBg.Size = UDim2.new(1, 0, 0, 3)
+    loadingBarBg.Position = UDim2.new(0, 0, 1, -8)
+    loadingBarBg.Size = UDim2.new(1, 0, 0, self:Scale(4))
     loadingBarBg.ClipsDescendants = true
     loadingBarBg.Parent = content
     self:CreateCorner(loadingBarBg, UDim.new(1, 0))
@@ -1734,7 +1649,7 @@ function SpectrumX:CreateStatusCard(parent, config)
     }
 end
 
--- FIXED: Notification System - Responsive positioning
+-- FIXED: Notification System - Responsive
 function SpectrumX:Notify(config)
     config = config or {}
     local text = config.Text or "Notification"
@@ -1743,9 +1658,8 @@ function SpectrumX:Notify(config)
     
     self:UpdateScale()
     
-    -- Responsive notification size
-    local notifWidth = self.Scale.IsMobile and 260 or 280
-    local notifHeight = self.Scale.IsMobile and 50 or 55
+    local notifWidth = ScaleData.IsMobile and 260 or 300
+    local notifHeight = ScaleData.IsMobile and 55 or 60
     
     local notification = Instance.new("Frame")
     notification.BackgroundColor3 = self.Theme.Card
@@ -1763,40 +1677,37 @@ function SpectrumX:Notify(config)
         color = Color3.fromRGB(255, 50, 50)
     end
     
-    local stroke = self:CreateStroke(notification, color, 1.5, 0.3)
+    local stroke = self:CreateStroke(notification, color, 2, 0.3)
     
     local icon = Instance.new("TextLabel")
     icon.BackgroundTransparency = 1
-    icon.Position = UDim2.new(0, 10, 0, 0)
-    icon.Size = UDim2.new(0, self:Scale(24), 1, 0)
+    icon.Position = UDim2.new(0, self:Scale(12), 0, 0)
+    icon.Size = UDim2.new(0, self:Scale(26), 1, 0)
     icon.Font = Enum.Font.GothamBlack
     icon.Text = type == "success" and "✓" or type == "warning" and "!" or type == "error" and "✕" or "i"
     icon.TextColor3 = color
-    icon.TextSize = self:Scale(18)
+    icon.TextSize = self:Scale(20)
     icon.Parent = notification
     
     local label = Instance.new("TextLabel")
     label.BackgroundTransparency = 1
-    label.Position = UDim2.new(0, self:Scale(40), 0, 0)
-    label.Size = UDim2.new(1, -self:Scale(50), 1, 0)
+    label.Position = UDim2.new(0, self:Scale(45), 0, 0)
+    label.Size = UDim2.new(1, -self:Scale(55), 1, 0)
     label.Font = Enum.Font.GothamSemibold
     label.Text = text
     label.TextColor3 = self.Theme.Text
-    label.TextSize = self:Scale(self.Theme.FontSize.Small)
+    label.TextSize = self:Scale(12)
     label.TextWrapped = true
     label.Parent = notification
     
-    -- Calculate entry position based on screen size
-    local entryX = self.Scale.IsMobile and -notifWidth - 10 or -notifWidth - 20
+    local entryX = ScaleData.IsMobile and -notifWidth - 10 or -notifWidth - 20
     
-    -- Animate in
-    self:Tween(notification, {Position = UDim2.new(1, self:Scale(entryX), 0.9, 0)}, 0.4)
+    self:Tween(notification, {Position = UDim2.new(1, self:Scale(entryX), 0.9, 0)}, 0.5)
     
     task.wait(duration)
     
-    -- Animate out
-    self:Tween(notification, {Position = UDim2.new(1, self:Scale(20), 0.9, 0)}, 0.4)
-    task.wait(0.4)
+    self:Tween(notification, {Position = UDim2.new(1, self:Scale(20), 0.9, 0)}, 0.5)
+    task.wait(0.5)
     notification:Destroy()
 end
 
