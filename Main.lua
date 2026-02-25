@@ -1,15 +1,3 @@
---[[
-    SpectrumX UI Library - Remastered Premium
-    Visual premium, preto puro, detalhes vermelhos, responsivo.
-    API 100% compatível. Funciona via loadstring.
-
-    Uso:
-        local SpectrumX = loadstring(game:HttpGet("URL"))()
-        local Window = SpectrumX:CreateWindow({ Title = "Meu Script", Icon = "S" })
-        local Tab = Window:CreateTab({ Name = "Main", Icon = "M" })
-        SpectrumX:CreateToggle(Tab.Left, { Text = "Auto Farm", Callback = function(v) end })
-]]
-
 local SpectrumX = {}
 SpectrumX.__index = SpectrumX
 
@@ -375,7 +363,7 @@ function SpectrumX:_CreateFloatingButton(config)
     local glow = Instance.new("ImageLabel")
     glow.BackgroundTransparency = 1; glow.Size = UDim2.new(1,0,1,0)
     glow.Image = "rbxassetid://7072725342"
-    glow.ImageTransparency = 0.6; glow.ZIndex = 2; glow.Parent = self.FloatBtn
+    glow.ImageTransparency = 1; glow.ZIndex = 2; glow.Parent = self.FloatBtn
 
     if config.IconAssetId and config.IconAssetId ~= "" then
         local img = Instance.new("ImageLabel"); img.BackgroundTransparency = 1
@@ -626,7 +614,7 @@ function SpectrumX:CreateToggle(parent, config)
     trackGlow.BackgroundTransparency = 1; trackGlow.Size = UDim2.new(1,20,1,20)
     trackGlow.Position = UDim2.new(0,-10,0,-10); trackGlow.Image = "rbxassetid://7072725342"
     trackGlow.ImageColor3 = self.Theme.Accent
-    trackGlow.ImageTransparency = default and 0.7 or 1
+    trackGlow.ImageTransparency = default and 1 or 1
     trackGlow.ZIndex = 1; trackGlow.Parent = track
 
     -- Knob
