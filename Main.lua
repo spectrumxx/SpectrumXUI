@@ -21,7 +21,15 @@ local PlayerGui   = LocalPlayer:WaitForChild("PlayerGui")
 -- Usa a viewport real para calcular um factor de escala.
 -- Baseline: 1366×768 (desktop médio). Em resoluções menores (mobile) tudo encolhe.
 local function getScale()
-    local vp = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or Vector2.new(1366, 768)
+    local vp
+    local ok, cam = pcall(function() return workspace.CurrentCamera end)
+    if ok and cam then
+        vp = cam.ViewportSize
+    end
+    -- Fallback seguro caso a câmera ainda não exista
+    if not vp or vp.X == 0 then
+        vp = Vector2.new(1366, 768)
+    end
     -- Base menor = UI maior em todas as resoluções
     local baseW, baseH = 1100, 620
     local s = math.clamp(math.min(vp.X / baseW, vp.Y / baseH), 0.5, 1.4)
