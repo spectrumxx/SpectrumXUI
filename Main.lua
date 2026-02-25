@@ -1,15 +1,3 @@
---[[
-    SpectrumX UI Library - Remastered Premium
-    Visual premium, preto puro, detalhes vermelhos, responsivo.
-    API 100% compatível. Funciona via loadstring.
-
-    Uso:
-        local SpectrumX = loadstring(game:HttpGet("URL"))()
-        local Window = SpectrumX:CreateWindow({ Title = "Meu Script", Icon = "S" })
-        local Tab = Window:CreateTab({ Name = "Main", Icon = "M" })
-        SpectrumX:CreateToggle(Tab.Left, { Text = "Auto Farm", Callback = function(v) end })
-]]
-
 local SpectrumX = {}
 SpectrumX.__index = SpectrumX
 
@@ -393,7 +381,7 @@ function SpectrumX:_CreateFloatingButton(config)
     shadow.Name = "Shadow"
     shadow.AnchorPoint = Vector2.new(0.5, 0.5)
     shadow.BackgroundColor3 = Color3.new(0, 0, 0)
-    shadow.BackgroundTransparency = 0.6
+    shadow.BackgroundTransparency = 1
     shadow.BorderSizePixel = 0
     shadow.Position = UDim2.new(0.5, 0, 0.5, 0)
     shadow.Size = UDim2.new(1, 20, 1, 20)
