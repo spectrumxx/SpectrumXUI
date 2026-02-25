@@ -180,7 +180,7 @@ function SpectrumX:CreateWindow(config)
     self.MainFrame.Active = true; self.MainFrame.Visible = true
     self.MainFrame.Parent = self.ScreenGui
     self:CreateCorner(self.MainFrame, UDim.new(0, 12))
-    self:CreateShadow(self.MainFrame, 70)
+    self:CreateShadow(self.MainFrame, 28)
 
     -- Borda vermelha principal
     local mainStroke = self:CreateStroke(self.MainFrame, self.Theme.Accent, 1.5, 0)
@@ -280,30 +280,39 @@ function SpectrumX:CreateWindow(config)
     end)
     minBtn.MouseButton1Click:Connect(function() self.MainFrame.Visible = false end)
 
-    -- ── SIDEBAR com scroll ─────────────────────────────────────────────────────
-    local SW = self:S(58)
-    self.Sidebar = Instance.new("ScrollingFrame")
-    self.Sidebar.Name = "Sidebar"
-    self.Sidebar.BackgroundColor3 = self.Theme.Sidebar
-    self.Sidebar.BorderSizePixel = 0
-    self.Sidebar.Position = UDim2.new(0, 0, 0, HH + 2)
-    self.Sidebar.Size = UDim2.new(0, SW, 1, -(HH + 2))
-    self.Sidebar.ScrollBarThickness = 0  -- escondido, mas funcional
-    self.Sidebar.CanvasSize = UDim2.new(0,0,0,0)
-    self.Sidebar.ScrollingDirection = Enum.ScrollingDirection.Y
-    self.Sidebar.Parent = self.MainFrame
-    self:CreateCorner(self.Sidebar, UDim.new(0, 12))
+    -- ── SIDEBAR ─────────────────────────────────────────────────────────────────
+    local SW = self:S(62)
 
-    -- Cover canto superior
-    local sbTopCov = Instance.new("Frame")
-    sbTopCov.BackgroundColor3 = self.Theme.Sidebar; sbTopCov.BorderSizePixel = 0
-    sbTopCov.Size = UDim2.new(1,0,0,12); sbTopCov.Parent = self.Sidebar
+    -- Wrapper externo: define visual (cor, arredondamento)
+    local sidebarWrap = Instance.new("Frame")
+    sidebarWrap.Name = "SidebarWrap"
+    sidebarWrap.BackgroundColor3 = self.Theme.Sidebar
+    sidebarWrap.BorderSizePixel = 0
+    sidebarWrap.Position = UDim2.new(0, 0, 0, HH + 1)
+    sidebarWrap.Size = UDim2.new(0, SW, 1, -(HH + 1))
+    sidebarWrap.ClipsDescendants = true
+    sidebarWrap.Parent = self.MainFrame
+    self:CreateCorner(sidebarWrap, UDim.new(0, 10))
 
-    -- Linha vermelha direita da sidebar
+    -- Linha separadora
     local sbLine = Instance.new("Frame")
     sbLine.BackgroundColor3 = self.Theme.Border; sbLine.BorderSizePixel = 0
     sbLine.Position = UDim2.new(1,-1,0,0); sbLine.Size = UDim2.new(0,1,1,0)
-    sbLine.Parent = self.Sidebar
+    sbLine.Parent = sidebarWrap
+
+    -- ScrollingFrame DENTRO do wrap (sem corner proprio, sem cover)
+    self.Sidebar = Instance.new("ScrollingFrame")
+    self.Sidebar.Name = "Sidebar"
+    self.Sidebar.BackgroundTransparency = 1
+    self.Sidebar.BorderSizePixel = 0
+    self.Sidebar.Position = UDim2.new(0,0,0,0)
+    self.Sidebar.Size = UDim2.new(1,0,1,0)
+    self.Sidebar.ScrollBarThickness = 2
+    self.Sidebar.ScrollBarImageColor3 = self.Theme.Accent
+    self.Sidebar.ScrollBarImageTransparency = 0.5
+    self.Sidebar.CanvasSize = UDim2.new(0,0,0,0)
+    self.Sidebar.ScrollingDirection = Enum.ScrollingDirection.Y
+    self.Sidebar.Parent = sidebarWrap
 
     local sbLayout = Instance.new("UIListLayout")
     sbLayout.SortOrder = Enum.SortOrder.LayoutOrder
@@ -312,20 +321,21 @@ function SpectrumX:CreateWindow(config)
     sbLayout.Parent = self.Sidebar
 
     local sbPad = Instance.new("UIPadding")
-    sbPad.PaddingTop = UDim.new(0, self:S(12))
-    sbPad.PaddingBottom = UDim.new(0, self:S(12))
+    sbPad.PaddingTop = UDim.new(0, self:S(10))
+    sbPad.PaddingBottom = UDim.new(0, self:S(10))
     sbPad.Parent = self.Sidebar
 
-    -- Auto-resize canvas da sidebar conforme tabs são adicionadas
+    -- Auto-resize canvas
     sbLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-        self.Sidebar.CanvasSize = UDim2.new(0,0,0, sbLayout.AbsoluteContentSize.Y + self:S(24))
+        self.Sidebar.CanvasSize = UDim2.new(0, 0, 0, sbLayout.AbsoluteContentSize.Y + self:S(20))
     end)
 
     -- ── CONTENT AREA ──────────────────────────────────────────────────────────
+    local CA_X = SW + self:S(8)
     self.ContentArea = Instance.new("Frame")
     self.ContentArea.Name = "ContentArea"; self.ContentArea.BackgroundTransparency = 1
-    self.ContentArea.Position = UDim2.new(0, SW + self:S(8), 0, HH + self:S(10))
-    self.ContentArea.Size = UDim2.new(1, -(SW + self:S(16)), 1, -(HH + self:S(18)))
+    self.ContentArea.Position = UDim2.new(0, CA_X, 0, HH + self:S(8))
+    self.ContentArea.Size = UDim2.new(1, -(CA_X + self:S(8)), 1, -(HH + self:S(14)))
     self.ContentArea.Parent = self.MainFrame
 
     self.Tabs = {}; self.CurrentTab = nil
@@ -627,7 +637,7 @@ function SpectrumX:CreateToggle(parent, config)
                              or UDim2.new(0,self:S(3),0.5,-kSz/2)
     knob.Size = UDim2.new(0,kSz,0,kSz); knob.ZIndex = 3; knob.Parent = track
     self:CreateCorner(knob, UDim.new(1,0))
-    self:CreateShadow(knob, 8)
+    -- sem sombra no knob pequeno
 
     local state = default
 
@@ -913,7 +923,7 @@ function SpectrumX:CreateSlider(parent, config)
     knob.Size = UDim2.new(0,kSz,0,kSz); knob.ZIndex = 2; knob.Parent = trackBg
     self:CreateCorner(knob, UDim.new(1,0))
     self:CreateStroke(knob, self.Theme.Accent, 2, 0)
-    self:CreateShadow(knob, 10)
+    -- sem sombra no knob pequeno
 
     local drag = false; local cur = default
 
@@ -1486,7 +1496,7 @@ function SpectrumX:Notify(config)
     notif.Parent = self.ScreenGui
     self:CreateCorner(notif, UDim.new(0,10))
     self:CreateStroke(notif, self.Theme.Border, 1, 0.3)
-    self:CreateShadow(notif, 30)
+    self:CreateShadow(notif, 16)
 
     -- Barra colorida esquerda
     local colorBar = Instance.new("Frame")
